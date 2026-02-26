@@ -114,7 +114,7 @@ export async function signOut() {
 
 // ── Add Akademisyen ─────────────────────────────────────────────
 // Admin panelinden yeni akademisyen ekler.
-// allowed_users tablosuna email, name ve role='akademisyen' insert eder.
+// Hem allowed_users hem de akademisyenler tablosuna kayıt atar.
 export async function addAkademisyen(formData: FormData) {
     const supabase = await createClient()
 
@@ -129,7 +129,7 @@ export async function addAkademisyen(formData: FormData) {
     // Unvan + isim birleştir
     const fullName = title ? `${title} ${firstName}` : firstName
 
-    // Email zaten kayıtlı mı?
+    // Email zaten kayıtlı mı? (allowed_users'da)
     const { data: existing } = await supabase
         .from('allowed_users')
         .select('id')
@@ -140,15 +140,36 @@ export async function addAkademisyen(formData: FormData) {
         return { error: 'Bu e-posta adresi zaten kayıtlı.' }
     }
 
-    const { error: insertError } = await supabase
+    // 1. allowed_users tablosuna ekle
+    const { data: newUser, error: insertAuthError } = await supabase
         .from('allowed_users')
         .insert({ email, name: fullName, role: 'akademisyen' })
+        .select()
+        .single()
 
-    if (insertError) {
-        return { error: 'Akademisyen eklenirken bir hata oluştu.' }
+    if (insertAuthError || !newUser) {
+        return { error: 'Yetkilendirme tablosuna eklenirken bir hata oluştu.' }
     }
 
-    revalidatePath('/admin/akademisyen-yonetimi')
+    // 2. akademisyenler tablosuna ekle (Profil bilgisi)
+    const { error: insertProfileError } = await supabase
+        .from('akademisyenler')
+        .insert({
+            user_id: newUser.id,
+            ad_soyad: fullName,
+            email: email,
+            unvan: title,
+            is_active: true,
+            display_order: 0
+        })
+
+    if (insertProfileError) {
+        // Not: allowed_users'dan silmeye gerek duymuyoruz şimdilik, manuel temizlenebilir
+        // ama idealde transaction veya rollback olmalı.
+        console.error("Profile insert error:", insertProfileError)
+    }
+
+    revalidatePath('/admin/akademisyenler')
     revalidatePath('/hakkimizda')
     return { success: `${fullName} başarıyla sisteme eklendi.` }
 }

@@ -13,26 +13,27 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = 'force-dynamic';
 
 export default async function AkademisyenYonetimiPage() {
-    // Supabase'den gerçek veriyi çekiyoruz
     const supabase = await createClient();
+
     const { data: akademisyenlerData, error } = await supabase
-        .from('allowed_users')
+        .from('akademisyenler')
         .select('*')
-        .eq('role', 'akademisyen')
         .order('created_at', { ascending: false });
 
-    // Supabase'den gelen veriyi eski formata uydurmak için işliyoruz
-    // Gerçekte projeler vs ayrı tablodan gelir ama şimdilik statik 0 yapıyoruz.
-    const akademisyenler = (akademisyenlerData || []).map((user) => ({
-        id: user.id,
-        name: user.name || user.email.split('@')[0], // name yoksa emailden türet
-        department: "Belirtilmemiş", // Şimdilik sabit
-        email: user.email,
-        projects: 0,
+    if (error) {
+        console.error("Akademisyen fetch error:", error);
+    }
+
+    const akademisyenler = (akademisyenlerData || []).map((hoca) => ({
+        id: hoca.id,
+        name: hoca.ad_soyad,
+        department: hoca.uzmanlik_alanlari?.join(", ") || "Belirtilmemiş",
+        email: hoca.email,
+        projects: hoca.proje_sayisi || 0,
         pending: 0,
-        published: 0,
-        status: "Aktif", // Veya user.status varsa oradan
-        lastLogin: new Date(user.created_at).toLocaleDateString("tr-TR"), // Şimdilik created_at
+        published: hoca.yayin_sayisi || 0,
+        status: hoca.is_active ? "Aktif" : "Pasif",
+        lastLogin: new Date(hoca.created_at).toLocaleDateString("tr-TR"),
     }));
 
     const summaryCards = [

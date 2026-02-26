@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, Shield, Trash2, Loader2 } from "lucide-react";
+import { Mail, Shield, Trash2, Loader2, Edit } from "lucide-react";
 import { deleteAkademisyen } from "@/lib/actions/akademisyen";
+import AkademisyenDuzenleModal from "./AkademisyenDuzenleModal";
 
 export default function AkademisyenActions({ hoca }) {
     const [isDeleting, setIsDeleting] = useState(false);
@@ -40,6 +41,9 @@ export default function AkademisyenActions({ hoca }) {
 
     return (
         <div className="flex items-center justify-end gap-1">
+            {/* Düzenle */}
+            <AkademisyenDuzenleModal hocaId={hoca.id} />
+
             {/* Mail */}
             <button
                 onClick={handleMail}

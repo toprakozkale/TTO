@@ -47,50 +47,6 @@ const hizmetler = [
     },
 ];
 
-// Akademik meta verileri (email → veri eşleştirmesi)
-const AKADEMIK_META = {
-    "ayhan.kaya@mku.edu.tr": {
-        expertise: ["Yapay Zeka", "Makine Öğrenmesi", "Siber Güvenlik"],
-        publications: 42,
-        hIndex: 14,
-        projects: 8,
-        bio: "Derin öğrenme ve siber güvenlik alanlarında 15+ yıllık deneyime sahip, ulusal ve uluslararası projelerde yürütücü.",
-        featured: true,
-    },
-    "elif.demir@mku.edu.tr": {
-        expertise: ["Proje Yönetimi", "TÜBİTAK", "AB H2020"],
-        publications: 28,
-        hIndex: 9,
-        projects: 12,
-        bio: "AB ve TÜBİTAK destekli projelerde koordinatörlük, teknoloji transfer süreçlerinde uzman.",
-        featured: false,
-    },
-    "mehmet.yilmaz@mku.edu.tr": {
-        expertise: ["Patent Hukuku", "Fikri Mülkiyet", "Ticarileştirme"],
-        publications: 15,
-        hIndex: 6,
-        projects: 5,
-        bio: "200+ patent başvurusu sürecinde danışmanlık, üniversite-sanayi lisans anlaşmaları.",
-        featured: false,
-    },
-    "fatma.ozkan@mku.edu.tr": {
-        expertise: ["Sanayi İşbirliği", "Spin-off", "KOBİ Desteği"],
-        publications: 19,
-        hIndex: 7,
-        projects: 9,
-        bio: "Üniversite-sanayi köprüsünde 10 yıllık deneyim, spin-off şirket kuruluş süreçleri.",
-        featured: false,
-    },
-};
-
-// Fallback ekip verileri (Supabase'den veri çekilemezse)
-const fallbackEkip = [
-    { name: "Prof. Dr. Ayhan Kaya", role: "TTO Direktörü", email: "ayhan.kaya@mku.edu.tr" },
-    { name: "Doç. Dr. Elif Demir", role: "Proje Koordinatörü", email: "elif.demir@mku.edu.tr" },
-    { name: "Dr. Mehmet Yılmaz", role: "Patent Uzmanı", email: "mehmet.yilmaz@mku.edu.tr" },
-    { name: "Dr. Fatma Özkan", role: "Sanayi İlişkileri", email: "fatma.ozkan@mku.edu.tr" },
-];
-
 // Gradyan renkleri — isimden deterministik olarak seçilir
 const GRADIENTS = [
     "from-hmku-primary to-rose-400",
@@ -106,6 +62,7 @@ const GRADIENTS = [
 ];
 
 function getInitials(name) {
+    if (!name) return "??";
     const parts = name.split(" ").filter(
         (p) => !["prof.", "doç.", "dr.", "arş.", "gör.", "uzm.", "öğr."].includes(p.toLowerCase())
     );
@@ -115,46 +72,43 @@ function getInitials(name) {
 }
 
 function getGradient(name) {
+    if (!name) return GRADIENTS[0];
     let hash = 0;
     for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
     return GRADIENTS[Math.abs(hash) % GRADIENTS.length];
 }
 
 export default async function HakkimizdaPage() {
+    const supabase = await createClient();
+
     // Akademisyenleri Supabase'den çek
-    let ekipUyeleri = fallbackEkip;
+    const { data: akademisyenler, error } = await supabase
+        .from("akademisyenler")
+        .select("*")
+        .eq("is_active", true)
+        .order("display_order", { ascending: true });
 
-    try {
-        const supabase = await createClient();
-        const { data, error } = await supabase
-            .from("allowed_users")
-            .select("name, email")
-            .eq("role", "akademisyen")
-            .order("created_at", { ascending: true });
-
-        if (!error && data && data.length > 0) {
-            ekipUyeleri = data.map((user) => ({
-                name: user.name || user.email.split("@")[0],
-                role: "Akademisyen",
-                email: user.email,
-            }));
-        }
-    } catch (err) {
-        console.error("Akademisyen fetch error:", err);
+    if (error) {
+        console.error("Akademisyen fetch error:", error);
     }
 
-    // Her üyeye initials, gradient ve akademik meta ekle
-    const ekipWithVisuals = ekipUyeleri.map((m) => ({
+    const liste = akademisyenler || [];
+
+    // Her üyeye initials ve gradient ekle (UI için gerekli)
+    const ekipWithVisuals = liste.map((m) => ({
         ...m,
-        initials: getInitials(m.name),
-        gradient: getGradient(m.name),
-        meta: AKADEMIK_META[m.email] || {
-            expertise: ["Araştırma", "Danışmanlık"],
-            publications: 0,
-            hIndex: 0,
-            projects: 0,
-            bio: "",
-            featured: false,
+        name: m.ad_soyad,
+        role: m.rol_etiketi || "Akademisyen",
+        initials: getInitials(m.ad_soyad),
+        gradient: getGradient(m.ad_soyad),
+        // Eski meta yapısını yeni tablo alanlarına eşle (Bento grid kodunu bozmamak için)
+        meta: {
+            expertise: m.uzmanlik_alanlari || ["Araştırma", "Danışmanlık"],
+            publications: m.yayin_sayisi,
+            hIndex: m.h_indeks,
+            projects: m.proje_sayisi,
+            bio: m.biyografi || "",
+            featured: false, // Gelecekte eklenebilir
         },
     }));
 
@@ -377,237 +331,245 @@ export default async function HakkimizdaPage() {
                 </div>
 
                 {/* ── Bento Grid ── */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 md:gap-5 auto-rows-auto">
-                    {ekipWithVisuals.map((member, idx) => {
-                        // Kart türü: idx'e göre döngüsel bento pattern
-                        const pattern = idx % 6;
+                {ekipWithVisuals.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 md:gap-5 auto-rows-auto">
+                        {ekipWithVisuals.map((member, idx) => {
+                            // Kart türü: idx'e göre döngüsel bento pattern
+                            const pattern = idx % 6;
 
-                        // Büyük öne çıkan kart (ilk veya her 6. eleman)
-                        if (pattern === 0) return (
-                            <Link
-                                key={member.email}
-                                href={`/hakkimizda/${encodeURIComponent(member.email)}`}
-                                className="group lg:col-span-5 relative overflow-hidden rounded-3xl bg-gradient-to-br from-hmku-dark via-slate-800 to-slate-900 p-7 flex flex-col justify-between min-h-[280px] hover:-translate-y-1 transition-all duration-300 shadow-xl hover:shadow-2xl cursor-pointer"
-                            >
-                                {/* Arka plan glow */}
-                                <div className={`absolute -top-10 -right-10 w-48 h-48 bg-gradient-to-br ${member.gradient} opacity-20 rounded-full blur-3xl group-hover:opacity-30 transition-opacity duration-500`} />
-                                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTSAwIDQwIEwgNDAgMCIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIwLjMiIHN0cm9rZS1vcGFjaXR5PSIwLjA1Ii8+PC9zdmc+')] opacity-50" />
+                            // Büyük öne çıkan kart (ilk veya her 6. eleman)
+                            if (pattern === 0) return (
+                                <Link
+                                    key={member.id}
+                                    href={`/hakkimizda/${member.id}`}
+                                    className="group lg:col-span-5 relative overflow-hidden rounded-3xl bg-gradient-to-br from-hmku-dark via-slate-800 to-slate-900 p-7 flex flex-col justify-between min-h-[280px] hover:-translate-y-1 transition-all duration-300 shadow-xl hover:shadow-2xl cursor-pointer"
+                                >
+                                    {/* Arka plan glow */}
+                                    <div className={`absolute -top-10 -right-10 w-48 h-48 bg-gradient-to-br ${member.gradient} opacity-20 rounded-full blur-3xl group-hover:opacity-30 transition-opacity duration-500`} />
+                                    <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTSAwIDQwIEwgNDAgMCIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIwLjMiIHN0cm9rZS1vcGFjaXR5PSIwLjA1Ii8+PC9zdmc+')] opacity-50" />
 
-                                <div className="relative z-10">
-                                    <span className="inline-block px-2.5 py-1 text-[10px] font-black text-rose-300 bg-hmku-primary/20 border border-hmku-primary/30 rounded-full tracking-[0.12em] uppercase mb-4">
-                                        {member.role}
-                                    </span>
-                                    <div className="flex items-center gap-4 mb-4">
-                                        <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${member.gradient} flex items-center justify-center shadow-lg flex-shrink-0`}>
-                                            <span className="text-white text-2xl font-black">{member.initials}</span>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-black text-white leading-tight">{member.name}</h3>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                                                <span className="text-[11px] text-slate-400 font-medium">Aktif Araştırmacı</span>
+                                    <div className="relative z-10">
+                                        <span className="inline-block px-2.5 py-1 text-[10px] font-black text-rose-300 bg-hmku-primary/20 border border-hmku-primary/30 rounded-full tracking-[0.12em] uppercase mb-4">
+                                            {member.role}
+                                        </span>
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${member.gradient} flex items-center justify-center shadow-lg flex-shrink-0`}>
+                                                <span className="text-white text-2xl font-black">{member.initials}</span>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-black text-white leading-tight">{member.name}</h3>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                                                    <span className="text-[11px] text-slate-400 font-medium">Aktif Araştırmacı</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    {member.meta.bio && (
-                                        <p className="text-xs text-slate-400 leading-relaxed mb-4 line-clamp-2">
-                                            {member.meta.bio}
-                                        </p>
-                                    )}
+                                        {member.meta.bio && (
+                                            <p className="text-xs text-slate-400 leading-relaxed mb-4 line-clamp-2">
+                                                {member.meta.bio}
+                                            </p>
+                                        )}
 
-                                    {/* İstatistikler */}
-                                    <div className="flex gap-4 mb-4">
-                                        <div className="text-center">
-                                            <p className="text-xl font-black text-white">{member.meta.publications || "—"}</p>
-                                            <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Yayın</p>
+                                        {/* İstatistikler */}
+                                        <div className="flex gap-4 mb-4">
+                                            <div className="text-center">
+                                                <p className="text-xl font-black text-white">{member.meta.publications ?? "—"}</p>
+                                                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Yayın</p>
+                                            </div>
+                                            <div className="w-px bg-white/10"></div>
+                                            <div className="text-center">
+                                                <p className="text-xl font-black text-white">{member.meta.hIndex ?? "—"}</p>
+                                                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">H-İndeks</p>
+                                            </div>
+                                            <div className="w-px bg-white/10"></div>
+                                            <div className="text-center">
+                                                <p className="text-xl font-black text-white">{member.meta.projects ?? "—"}</p>
+                                                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Proje</p>
+                                            </div>
                                         </div>
-                                        <div className="w-px bg-white/10"></div>
-                                        <div className="text-center">
-                                            <p className="text-xl font-black text-white">{member.meta.hIndex || "—"}</p>
-                                            <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">H-İndeks</p>
-                                        </div>
-                                        <div className="w-px bg-white/10"></div>
-                                        <div className="text-center">
-                                            <p className="text-xl font-black text-white">{member.meta.projects || "—"}</p>
-                                            <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Proje</p>
-                                        </div>
-                                    </div>
 
-                                    {/* Uzmanlık etiketleri */}
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {(member.meta.expertise || []).map(tag => (
-                                            <span key={tag} className="px-2 py-1 text-[10px] font-semibold text-slate-300 bg-white/8 rounded-lg border border-white/10">
-                                                {tag}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Profil butonu */}
-                                <div className="relative z-10 mt-5 flex items-center justify-between">
-                                    <span className="text-[11px] text-slate-500 font-medium">{member.email}</span>
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 border border-white/15 text-white text-[11px] font-bold group-hover:bg-hmku-primary group-hover:border-hmku-primary transition-all duration-300">
-                                        Profili Gör <ArrowRight className="w-3 h-3" />
-                                    </div>
-                                </div>
-                            </Link>
-                        );
-
-                        // Dikey orta boy kart (idx 1, 4)
-                        if (pattern === 1 || pattern === 4) return (
-                            <Link
-                                key={member.email}
-                                href={`/hakkimizda/${encodeURIComponent(member.email)}`}
-                                className="group lg:col-span-4 bg-white rounded-3xl border border-slate-100 p-6 shadow-modern hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col gap-4"
-                            >
-                                {/* Üst — avatar + isim */}
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${member.gradient} flex items-center justify-center shadow-md flex-shrink-0 group-hover:scale-105 transition-transform duration-300`}>
-                                        <span className="text-white text-xl font-black">{member.initials}</span>
-                                    </div>
-                                    <div className="min-w-0">
-                                        <h3 className="text-sm font-black text-hmku-dark leading-snug">{member.name}</h3>
-                                        <p className="text-[11px] text-hmku-muted font-medium mt-0.5">{member.role}</p>
-                                    </div>
-                                </div>
-
-                                {/* Bio */}
-                                {member.meta.bio && (
-                                    <p className="text-xs text-hmku-muted leading-relaxed line-clamp-2 border-t border-slate-50 pt-3">
-                                        {member.meta.bio}
-                                    </p>
-                                )}
-
-                                {/* Uzmanlık */}
-                                <div className="flex flex-wrap gap-1.5">
-                                    {(member.meta.expertise || []).slice(0, 2).map(tag => (
-                                        <span key={tag} className="px-2 py-1 text-[10px] font-semibold text-hmku-primary bg-rose-50 rounded-lg border border-rose-100">
-                                            {tag}
-                                        </span>
-                                    ))}
-                                </div>
-
-                                {/* Sayılar */}
-                                <div className="flex gap-3 pt-2 border-t border-slate-50">
-                                    <div>
-                                        <p className="text-base font-black text-hmku-dark">{member.meta.publications || "—"}</p>
-                                        <p className="text-[10px] text-hmku-muted uppercase tracking-wider font-semibold">Yayın</p>
-                                    </div>
-                                    <div className="w-px bg-slate-100"></div>
-                                    <div>
-                                        <p className="text-base font-black text-hmku-dark">{member.meta.hIndex || "—"}</p>
-                                        <p className="text-[10px] text-hmku-muted uppercase tracking-wider font-semibold">H-İndeks</p>
-                                    </div>
-                                    <div className="w-px bg-slate-100"></div>
-                                    <div>
-                                        <p className="text-base font-black text-hmku-dark">{member.meta.projects || "—"}</p>
-                                        <p className="text-[10px] text-hmku-muted uppercase tracking-wider font-semibold">Proje</p>
-                                    </div>
-                                    <div className="ml-auto flex items-end">
-                                        <div className="w-8 h-8 rounded-xl bg-hmku-primary/8 flex items-center justify-center group-hover:bg-hmku-primary transition-colors duration-300">
-                                            <ArrowRight className="w-4 h-4 text-hmku-primary group-hover:text-white transition-colors duration-300" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </Link>
-                        );
-
-                        // Yatay kompakt kart (idx 2)
-                        if (pattern === 2) return (
-                            <Link
-                                key={member.email}
-                                href={`/hakkimizda/${encodeURIComponent(member.email)}`}
-                                className="group lg:col-span-3 bg-white rounded-3xl border border-slate-100 p-5 shadow-modern hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between min-h-[160px]"
-                            >
-                                <div>
-                                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${member.gradient} flex items-center justify-center shadow-md mb-3 group-hover:scale-105 transition-transform duration-300`}>
-                                        <span className="text-white text-lg font-black">{member.initials}</span>
-                                    </div>
-                                    <h3 className="text-sm font-black text-hmku-dark leading-snug">{member.name}</h3>
-                                    <p className="text-[11px] text-hmku-muted font-medium mt-0.5">{member.role}</p>
-                                </div>
-                                <div className="flex flex-wrap gap-1 mt-3">
-                                    {(member.meta.expertise || []).slice(0, 2).map(tag => (
-                                        <span key={tag} className="px-2 py-0.5 text-[9px] font-bold text-hmku-muted bg-slate-50 rounded-full border border-slate-100">
-                                            {tag}
-                                        </span>
-                                    ))}
-                                </div>
-                                <div className="mt-3 flex items-center justify-between">
-                                    <span className="text-[11px] font-black text-hmku-dark">{member.meta.publications || "—"} <span className="text-hmku-muted font-normal">yayın</span></span>
-                                    <div className="w-7 h-7 rounded-xl bg-rose-50 flex items-center justify-center group-hover:bg-hmku-primary transition-colors duration-300">
-                                        <ArrowRight className="w-3.5 h-3.5 text-hmku-primary group-hover:text-white transition-colors duration-300" />
-                                    </div>
-                                </div>
-                            </Link>
-                        );
-
-                        // Renkli istatistik kartı (idx 3)
-                        if (pattern === 3) return (
-                            <Link
-                                key={member.email}
-                                href={`/hakkimizda/${encodeURIComponent(member.email)}`}
-                                className={`group lg:col-span-4 relative overflow-hidden rounded-3xl bg-gradient-to-br ${member.gradient} p-6 flex flex-col justify-between min-h-[200px] hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-xl cursor-pointer`}
-                            >
-                                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 70% 30%, white 0%, transparent 60%)' }} />
-                                <div className="relative z-10">
-                                    <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-4 group-hover:bg-white/30 transition-colors duration-300">
-                                        <span className="text-white text-xl font-black">{member.initials}</span>
-                                    </div>
-                                    <h3 className="text-base font-black text-white leading-snug">{member.name}</h3>
-                                    <p className="text-[11px] text-white/70 font-medium mt-0.5">{member.role}</p>
-                                    {member.meta.bio && (
-                                        <p className="text-[11px] text-white/60 mt-2 leading-relaxed line-clamp-2">{member.meta.bio}</p>
-                                    )}
-                                </div>
-                                <div className="relative z-10 flex items-center justify-between mt-4">
-                                    <div className="flex gap-3">
-                                        <span className="text-sm font-black text-white">{member.meta.publications || "—"}<span className="text-[10px] text-white/60 font-normal ml-0.5">yay.</span></span>
-                                        <span className="text-white/30">|</span>
-                                        <span className="text-sm font-black text-white">{member.meta.hIndex || "—"}<span className="text-[10px] text-white/60 font-normal ml-0.5">H</span></span>
-                                    </div>
-                                    <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors duration-300">
-                                        <ArrowRight className="w-4 h-4 text-white" />
-                                    </div>
-                                </div>
-                            </Link>
-                        );
-
-                        // Minimal yatay kart (idx 5)
-                        return (
-                            <Link
-                                key={member.email}
-                                href={`/hakkimizda/${encodeURIComponent(member.email)}`}
-                                className="group lg:col-span-4 bg-hmku-bg rounded-3xl border border-slate-100 p-5 shadow-modern hover:shadow-xl hover:bg-white hover:-translate-y-1 transition-all duration-300 cursor-pointer"
-                            >
-                                <div className="flex items-start gap-4">
-                                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${member.gradient} flex items-center justify-center shadow-md flex-shrink-0 group-hover:scale-105 transition-transform duration-300`}>
-                                        <span className="text-white text-xl font-black">{member.initials}</span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="text-sm font-black text-hmku-dark leading-snug">{member.name}</h3>
-                                        <p className="text-[11px] text-hmku-muted font-medium mt-0.5">{member.role}</p>
-                                        <div className="flex flex-wrap gap-1 mt-2">
-                                            {(member.meta.expertise || []).slice(0, 3).map(tag => (
-                                                <span key={tag} className="px-2 py-0.5 text-[9px] font-bold text-hmku-primary bg-rose-50 rounded-full border border-rose-100">
+                                        {/* Uzmanlık etiketleri */}
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {(member.meta.expertise || []).map(tag => (
+                                                <span key={tag} className="px-2 py-1 text-[10px] font-semibold text-slate-300 bg-white/8 rounded-lg border border-white/10">
                                                     {tag}
                                                 </span>
                                             ))}
                                         </div>
                                     </div>
-                                    <div className="w-7 h-7 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm group-hover:bg-hmku-primary transition-colors duration-300 mt-0.5">
-                                        <ArrowRight className="w-3.5 h-3.5 text-hmku-muted group-hover:text-white transition-colors duration-300" />
+
+                                    {/* Profil butonu */}
+                                    <div className="relative z-10 mt-5 flex items-center justify-between">
+                                        <span className="text-[11px] text-slate-500 font-medium">{member.email}</span>
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 border border-white/15 text-white text-[11px] font-bold group-hover:bg-hmku-primary group-hover:border-hmku-primary transition-all duration-300">
+                                            Profili Gör <ArrowRight className="w-3 h-3" />
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex gap-4 mt-4 pt-3 border-t border-slate-100">
-                                    <span className="text-xs text-hmku-muted"><span className="font-black text-hmku-dark">{member.meta.publications || "—"}</span> Yayın</span>
-                                    <span className="text-xs text-hmku-muted"><span className="font-black text-hmku-dark">{member.meta.projects || "—"}</span> Proje</span>
-                                </div>
-                            </Link>
-                        );
-                    })}
-                </div>
+                                </Link>
+                            );
+
+                            // Dikey orta boy kart (idx 1, 4)
+                            if (pattern === 1 || pattern === 4) return (
+                                <Link
+                                    key={member.id}
+                                    href={`/hakkimizda/${member.id}`}
+                                    className="group lg:col-span-4 bg-white rounded-3xl border border-slate-100 p-6 shadow-modern hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col gap-4"
+                                >
+                                    {/* Üst — avatar + isim */}
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${member.gradient} flex items-center justify-center shadow-md flex-shrink-0 group-hover:scale-105 transition-transform duration-300`}>
+                                            <span className="text-white text-xl font-black">{member.initials}</span>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h3 className="text-sm font-black text-hmku-dark leading-snug">{member.name}</h3>
+                                            <p className="text-[11px] text-hmku-muted font-medium mt-0.5">{member.role}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Bio */}
+                                    {member.meta.bio && (
+                                        <p className="text-xs text-hmku-muted leading-relaxed line-clamp-2 border-t border-slate-50 pt-3">
+                                            {member.meta.bio}
+                                        </p>
+                                    )}
+
+                                    {/* Uzmanlık */}
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {(member.meta.expertise || []).slice(0, 2).map(tag => (
+                                            <span key={tag} className="px-2 py-1 text-[10px] font-semibold text-hmku-primary bg-rose-50 rounded-lg border border-rose-100">
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
+
+                                    {/* Sayılar */}
+                                    <div className="flex gap-3 pt-2 border-t border-slate-50">
+                                        <div>
+                                            <p className="text-base font-black text-hmku-dark">{member.meta.publications ?? "—"}</p>
+                                            <p className="text-[10px] text-hmku-muted uppercase tracking-wider font-semibold">Yayın</p>
+                                        </div>
+                                        <div className="w-px bg-slate-100"></div>
+                                        <div>
+                                            <p className="text-base font-black text-hmku-dark">{member.meta.hIndex ?? "—"}</p>
+                                            <p className="text-[10px] text-hmku-muted uppercase tracking-wider font-semibold">H-İndeks</p>
+                                        </div>
+                                        <div className="w-px bg-slate-100"></div>
+                                        <div>
+                                            <p className="text-base font-black text-hmku-dark">{member.meta.projects ?? "—"}</p>
+                                            <p className="text-[10px] text-hmku-muted uppercase tracking-wider font-semibold">Proje</p>
+                                        </div>
+                                        <div className="ml-auto flex items-end">
+                                            <div className="w-8 h-8 rounded-xl bg-hmku-primary/8 flex items-center justify-center group-hover:bg-hmku-primary transition-colors duration-300">
+                                                <ArrowRight className="w-4 h-4 text-hmku-primary group-hover:text-white transition-colors duration-300" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Link>
+                            );
+
+                            // Yatay kompakt kart (idx 2)
+                            if (pattern === 2) return (
+                                <Link
+                                    key={member.id}
+                                    href={`/hakkimizda/${member.id}`}
+                                    className="group lg:col-span-3 bg-white rounded-3xl border border-slate-100 p-5 shadow-modern hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between min-h-[160px]"
+                                >
+                                    <div>
+                                        <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${member.gradient} flex items-center justify-center shadow-md mb-3 group-hover:scale-105 transition-transform duration-300`}>
+                                            <span className="text-white text-lg font-black">{member.initials}</span>
+                                        </div>
+                                        <h3 className="text-sm font-black text-hmku-dark leading-snug">{member.name}</h3>
+                                        <p className="text-[11px] text-hmku-muted font-medium mt-0.5">{member.role}</p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1 mt-3">
+                                        {(member.meta.expertise || []).slice(0, 2).map(tag => (
+                                            <span key={tag} className="px-2 py-0.5 text-[9px] font-bold text-hmku-muted bg-slate-50 rounded-full border border-slate-100">
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <div className="mt-3 flex items-center justify-between">
+                                        <span className="text-[11px] font-black text-hmku-dark">{member.meta.publications ?? "—"} <span className="text-hmku-muted font-normal">yayın</span></span>
+                                        <div className="w-7 h-7 rounded-xl bg-rose-50 flex items-center justify-center group-hover:bg-hmku-primary transition-colors duration-300">
+                                            <ArrowRight className="w-3.5 h-3.5 text-hmku-primary group-hover:text-white transition-colors duration-300" />
+                                        </div>
+                                    </div>
+                                </Link>
+                            );
+
+                            // Renkli istatistik kartı (idx 3)
+                            if (pattern === 3) return (
+                                <Link
+                                    key={member.id}
+                                    href={`/hakkimizda/${member.id}`}
+                                    className={`group lg:col-span-4 relative overflow-hidden rounded-3xl bg-gradient-to-br ${member.gradient} p-6 flex flex-col justify-between min-h-[200px] hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-xl cursor-pointer`}
+                                >
+                                    <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 70% 30%, white 0%, transparent 60%)' }} />
+                                    <div className="relative z-10">
+                                        <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-4 group-hover:bg-white/30 transition-colors duration-300">
+                                            <span className="text-white text-xl font-black">{member.initials}</span>
+                                        </div>
+                                        <h3 className="text-base font-black text-white leading-snug">{member.name}</h3>
+                                        <p className="text-[11px] text-white/70 font-medium mt-0.5">{member.role}</p>
+                                        {member.meta.bio && (
+                                            <p className="text-[11px] text-white/60 mt-2 leading-relaxed line-clamp-2">{member.meta.bio}</p>
+                                        )}
+                                    </div>
+                                    <div className="relative z-10 flex items-center justify-between mt-4">
+                                        <div className="flex gap-3">
+                                            <span className="text-sm font-black text-white">{member.meta.publications ?? "—"}<span className="text-[10px] text-white/60 font-normal ml-0.5">yay.</span></span>
+                                            <span className="text-white/30">|</span>
+                                            <span className="text-sm font-black text-white">{member.meta.hIndex ?? "—"}<span className="text-[10px] text-white/60 font-normal ml-0.5">H</span></span>
+                                        </div>
+                                        <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors duration-300">
+                                            <ArrowRight className="w-4 h-4 text-white" />
+                                        </div>
+                                    </div>
+                                </Link>
+                            );
+
+                            // Minimal yatay kart (idx 5)
+                            return (
+                                <Link
+                                    key={member.id}
+                                    href={`/hakkimizda/${member.id}`}
+                                    className="group lg:col-span-4 bg-hmku-bg rounded-3xl border border-slate-100 p-5 shadow-modern hover:shadow-xl hover:bg-white hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+                                >
+                                    <div className="flex items-start gap-4">
+                                        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${member.gradient} flex items-center justify-center shadow-md flex-shrink-0 group-hover:scale-105 transition-transform duration-300`}>
+                                            <span className="text-white text-xl font-black">{member.initials}</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-sm font-black text-hmku-dark leading-snug">{member.name}</h3>
+                                            <p className="text-[11px] text-hmku-muted font-medium mt-0.5">{member.role}</p>
+                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                {(member.meta.expertise || []).slice(0, 3).map(tag => (
+                                                    <span key={tag} className="px-2 py-0.5 text-[9px] font-bold text-hmku-primary bg-rose-50 rounded-full border border-slate-100">
+                                                        {tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="w-7 h-7 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm group-hover:bg-hmku-primary transition-colors duration-300 mt-0.5">
+                                            <ArrowRight className="w-3.5 h-3.5 text-hmku-muted group-hover:text-white transition-colors duration-300" />
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-4 mt-4 pt-3 border-t border-slate-100">
+                                        <span className="text-xs text-hmku-muted"><span className="font-black text-hmku-dark">{member.meta.publications ?? "—"}</span> Yayın</span>
+                                        <span className="text-xs text-hmku-muted"><span className="font-black text-hmku-dark">{member.meta.projects ?? "—"}</span> Proje</span>
+                                    </div>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                        <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-bold text-hmku-dark">Henüz Akademisyen Eklenmemiş</h3>
+                        <p className="text-sm text-hmku-muted mt-1">Ekibimiz çok yakında burada paylaşılacaktır.</p>
+                    </div>
+                )}
             </section>
 
             {/* ───── CTA — Newspaper footer banner ───── */}

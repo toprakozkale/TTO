@@ -3,50 +3,58 @@ import ProfileShell from "@/components/profile/ProfileShell";
 
 export async function generateMetadata({ params }) {
     const resolvedParams = await params;
-    const id = decodeURIComponent(resolvedParams.id);
+    const { id } = resolvedParams;
+
+    const supabase = await createClient();
+    const { data } = await supabase
+        .from("akademisyenler")
+        .select("ad_soyad")
+        .eq("id", id)
+        .single();
+
     return {
-        title: `${id.split("@")[0]} — Akademisyen Profili | HMKÜ TTO`,
+        title: `${data?.ad_soyad || "Akademisyen"} — Akademisyen Profili | HMKÜ TTO`,
         description: `Akademisyen profili — yayınlar, projeler ve araştırma alanları.`,
     };
 }
 
 export default async function AkademisyenProfilPage({ params }) {
     const resolvedParams = await params;
-    const rawId = decodeURIComponent(resolvedParams.id);
+    const { id } = resolvedParams;
 
     // Akademisyen bilgisini Supabase'den çek
-    let akademisyen = {
-        name: rawId.includes("@") ? rawId.split("@")[0] : rawId,
-        email: rawId.includes("@") ? rawId : null,
-        role: "Akademisyen",
-    };
+    const supabase = await createClient();
+    const { data: akademisyen, error } = await supabase
+        .from("akademisyenler")
+        .select("*")
+        .eq("id", id)
+        .single();
 
-    try {
-        const supabase = await createClient();
-        const { data, error } = await supabase
-            .from("allowed_users")
-            .select("name, email, role")
-            .eq("email", rawId)
-            .single();
-
-        if (!error && data) {
-            akademisyen = {
-                name: data.name || rawId.split("@")[0],
-                email: data.email,
-                role: data.role === "akademisyen" ? "Akademisyen" : data.role,
-            };
-        }
-    } catch (err) {
-        console.error("Profil fetch error:", err);
+    if (error || !akademisyen) {
+        return (
+            <ProfileShell
+                akademisyen={{ name: "Bulunamadı", role: "Akademisyen", email: "" }}
+                stats={{ totalPublications: 0, openAccess: 0, citations: 0, hIndex: 0 }}
+            />
+        );
     }
 
-    // İstatistikler (ileride Supabase yayın tablosundan çekilecek)
-    const stats = {
-        totalPublications: 24,
-        openAccess: 9,
-        citations: 412,
-        hIndex: 11,
+    const filteredAkademisyen = {
+        name: akademisyen.ad_soyad,
+        email: akademisyen.email,
+        role: akademisyen.rol_etiketi || "Akademisyen",
+        bio: akademisyen.biyografi,
+        expertise: akademisyen.uzmanlik_alanlari || [],
     };
 
-    return <ProfileShell akademisyen={akademisyen} stats={stats} />;
+    // İstatistikler
+    const stats = {
+        totalPublications: akademisyen.yayin_sayisi || 0,
+        openAccess: 0, // Bu alan şimdilik veritabanında yok
+        citations: 0,  // Bu alan şimdilik veritabanında yok
+        hIndex: akademisyen.h_indeks || 0,
+        projects: akademisyen.proje_sayisi || 0,
+    };
+
+    return <ProfileShell akademisyen={filteredAkademisyen} stats={stats} />;
 }
