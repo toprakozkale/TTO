@@ -127,24 +127,19 @@ function AnaSayfaPanel({ akademisyen, stats }) {
     ];
 
     const metrikler = [
-        { label: "Yayın", value: stats?.totalPublications ?? 24, badge: null },
-        { label: "Yayın (WoS)", value: 18, badge: null },
-        { label: "Yayın (Scopus)", value: 20, badge: null },
-        { label: "Atıf (WoS)", value: 412, badge: null },
-        { label: "H-İndeks (WoS)", value: stats?.hIndex ?? 11, badge: null },
-        { label: "Atıf (Scopus)", value: 389, badge: null },
-        { label: "H-İndeks (Scopus)", value: 10, badge: null },
-        { label: "Atıf (Scholar)", value: 521, badge: null },
-        { label: "H-İndeks (Scholar)", value: 13, badge: null },
-        { label: "Atıf (TrDizin)", value: 8, badge: null },
-        { label: "H-İndeks (TrDizin)", value: 2, badge: null },
-        { label: "Atıf (Sobiad)", value: 34, badge: null },
-        { label: "H-İndeks (Sobiad)", value: 4, badge: null },
-        { label: "Atıf (Diğer Toplam)", value: 21, badge: null },
-        { label: "Proje", value: 4, badge: null },
+        { label: "Yayın (OpenAlex)", value: stats?.totalPublications ?? 0, badge: null },
+        { label: "Atıf (OpenAlex)", value: stats?.citations ?? 0, badge: null },
+        { label: "H-İndeks (OpenAlex)", value: stats?.hIndex ?? 0, badge: null },
+        { label: "Proje", value: stats?.projects ?? 0, badge: null },
+        { label: "Yayın (WoS)", value: 0, badge: null },
+        { label: "Atıf (WoS)", value: 0, badge: null },
+        { label: "H-İndeks (WoS)", value: 0, badge: null },
+        { label: "Yayın (Scopus)", value: 0, badge: null },
+        { label: "Atıf (Scopus)", value: 0, badge: null },
+        { label: "H-İndeks (Scopus)", value: 0, badge: null },
         {
             label: "Açık Erişim",
-            value: stats?.openAccess ?? 9,
+            value: stats?.openAccess ?? 0,
             badge: (
                 <svg viewBox="0 0 24 24" className="w-8 h-8 text-orange-500 flex-shrink-0" fill="currentColor">
                     <path d="M12 1C8.676 1 6 3.676 6 7v1H4v15h16V8h-2V7c0-3.324-2.676-6-6-6zm0 2c2.276 0 4 1.724 4 4v1H8V7c0-2.276 1.724-4 4-4zm0 9a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" />
@@ -669,17 +664,9 @@ const MOCK_PUBS = [
     },
 ];
 
-function YayinlarPanel({ name }) {
-    const filters = [
-        { label: "Tümü", count: 228 },
-        { label: "SCI-E, SSCI, AHCI", count: 189 },
-        { label: "SCI-E, SSCI, AHCI, ESCI", count: 197 },
-        { label: "ESCI", count: 6 },
-        { label: "Scopus", count: 200 },
-        { label: "TRDizin", count: 23 },
-        { label: "Diğer Yayınlar", count: 5 },
-    ];
+import WorksSection from "@/components/WorksSection";
 
+function YayinlarPanel({ name, orcid, openAlexWorks }) {
     return (
         <div className="space-y-4">
             {/* Sayfa başlığı */}
@@ -688,54 +675,19 @@ function YayinlarPanel({ name }) {
                 <div className="mt-1.5 w-14 h-1 bg-slate-800 rounded-full" />
             </div>
 
-
-            {/* Yayın Ağı Kısmı */}
-            <div className="flex items-center gap-3 mb-6">
-                <div className="w-14 h-14 rounded-full border border-slate-100 bg-white flex items-center justify-center p-1.5 shadow-sm">
-                    <svg viewBox="0 0 100 100" className="w-full h-full text-slate-400">
-                        <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 2" opacity="0.5" />
-                        <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 2" opacity="0.5" />
-                        {[0, 60, 120, 180, 240, 300].map((angle, i) => {
-                            const x = 50 + 35 * Math.cos((angle * Math.PI) / 180);
-                            const y = 50 + 35 * Math.sin((angle * Math.PI) / 180);
-                            return (
-                                <g key={i}>
-                                    <line x1="50" y1="50" x2={x} y2={y} stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
-                                    <circle cx={x} cy={y} r="2.5" fill={i % 2 === 0 ? "#3b82f6" : "#f43f5e"} />
-                                </g>
-                            );
-                        })}
-                        <circle cx="50" cy="50" r="4" fill="#10b981" />
-                    </svg>
+            {orcid ? (
+                <WorksSection
+                    initialWorks={openAlexWorks}
+                    orcid={orcid}
+                    totalCount={openAlexWorks?.meta?.count || 0}
+                />
+            ) : (
+                <div className="bg-white/70 backdrop-blur-sm border border-dashed border-slate-200 rounded-2xl p-12 flex flex-col items-center justify-center text-center gap-3">
+                    <BookOpen className="w-10 h-10 text-slate-200" />
+                    <p className="text-sm font-bold text-hmku-muted">ORCID Bilgisi Bulunamadı</p>
+                    <p className="text-xs text-hmku-muted/60">Yayınların çekilebilmesi için akademisyen profilinde ORCID ID tanımlı olmalıdır.</p>
                 </div>
-                <span className="text-[13px] font-medium text-slate-500 hover:text-blue-500 cursor-pointer transition-colors">Yayın Ağı</span>
-            </div>
-
-            {/* Makaleler Akordeon */}
-            <AccordionSection title="Makaleler" count={228}>
-                {/* Alt Filtreler */}
-                <div className="flex flex-wrap gap-2 mb-8">
-                    {filters.map((f, i) => (
-                        <button
-                            key={f.label}
-                            className={`px-4 py-2 text-[11px] font-bold rounded-full transition-all border ${i === 0
-                                ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20"
-                                : "bg-slate-100 text-slate-500 border-transparent hover:bg-slate-200"
-                                }`}
-
-                        >
-                            {f.label} ({f.count})
-                        </button>
-                    ))}
-                </div>
-
-                {/* Yayın Listesi */}
-                <div className="space-y-6">
-                    {MOCK_PUBS.map((pub, i) => (
-                        <PubCard key={pub.id} pub={pub} index={i + 1} highlight={name} />
-                    ))}
-                </div>
-            </AccordionSection>
+            )}
         </div>
     );
 }
@@ -1093,7 +1045,7 @@ function IletisimPanel({ akademisyen }) {
 // ═══════════════════════════════════════════════════════════════════
 // ANA SHELL BİLEŞENİ
 // ═══════════════════════════════════════════════════════════════════
-export default function ProfileShell({ akademisyen, stats }) {
+export default function ProfileShell({ akademisyen, stats, openAlexWorks }) {
     const [activeTab, setActiveTab] = useState("anasayfa");
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const gradient = getGradient(akademisyen?.name);
@@ -1106,7 +1058,13 @@ export default function ProfileShell({ akademisyen, stats }) {
             case "egitim": return <EgitimPanel />;
             case "arastirma": return <ArastirmaPanel />;
             case "idari": return <IdariPanel />;
-            case "yayinlar": return <YayinlarPanel name={akademisyen?.name} />;
+            case "yayinlar": return (
+                <YayinlarPanel
+                    name={akademisyen?.name}
+                    orcid={akademisyen?.orcid_id}
+                    openAlexWorks={openAlexWorks}
+                />
+            );
             case "projeler": return <ProjelerPanel />;
             case "faaliyetler": return <FaaliyetlerPanel />;
             case "basarilar": return <BaskilarPanel stats={stats} />;
