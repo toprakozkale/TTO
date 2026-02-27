@@ -63,3 +63,9 @@ export interface OpenAlexAuthor {
         field: { display_name: string }
     }>
 }
+
+export type JournalIndex = 'SCIE' | 'SSCI' | 'AHCI' | 'ESCI' | 'SCOPUS' | 'TRDIZIN'
+
+export interface WorkWithIndexes extends OpenAlexWork {
+    journalIndexes: JournalIndex[]
+}

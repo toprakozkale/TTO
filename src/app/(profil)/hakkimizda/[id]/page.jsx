@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import ProfileShell from "@/components/profile/ProfileShell";
-import { getAuthorByOrcid, getWorksByOrcid } from "@/lib/openalex";
+import { getAuthorByOrcid, getAllWorksByOrcid, getIndexesForWorks } from "@/lib/openalex";
 
 export async function generateMetadata({ params }) {
     const resolvedParams = await params;
@@ -45,12 +45,27 @@ export default async function AkademisyenProfilPage({ params }) {
     let authorStats = null;
 
     if (akademisyen.orcid_id) {
-        const [worksData, authorData] = await Promise.all([
-            getWorksByOrcid(akademisyen.orcid_id, 1, 25),
+        const [allWorks, authorData] = await Promise.all([
+            getAllWorksByOrcid(akademisyen.orcid_id),
             getAuthorByOrcid(akademisyen.orcid_id)
         ]);
-        openAlexWorks = worksData;
         authorStats = authorData;
+
+        // Yayınları dergi endeksleriyle zenginleştir
+        if (allWorks.length > 0) {
+            const indexMap = await getIndexesForWorks(allWorks);
+            const enrichedWorks = allWorks.map(work => ({
+                ...work,
+                journalIndexes: work.primary_location?.source?.issn_l
+                    ? (indexMap.get(work.primary_location.source.issn_l) ?? [])
+                    : []
+            }));
+            // WorksSection beklediği formatta sar
+            openAlexWorks = {
+                results: enrichedWorks,
+                meta: { count: enrichedWorks.length }
+            };
+        }
 
         // İstatistikleri Supabase'de asenkron güncelle (beklemiyoruz)
         if (authorStats) {
@@ -78,13 +93,27 @@ export default async function AkademisyenProfilPage({ params }) {
         orcid_id: akademisyen.orcid_id,
     };
 
+    // Zenginleştirilmiş yayın listesinden endeks istatistiklerini hesapla
+    const enrichedResults = openAlexWorks?.results ?? [];
+    const wosCount = enrichedResults.filter(w =>
+        w.journalIndexes?.some(i => ['SCIE', 'SSCI', 'AHCI'].includes(i))
+    ).length;
+    const scopusCount = enrichedResults.filter(w =>
+        w.journalIndexes?.includes('SCOPUS')
+    ).length;
+    const openAccessCount = enrichedResults.filter(w =>
+        w.open_access?.is_oa === true
+    ).length;
+
     // İstatistikler
     const stats = {
         totalPublications: authorStats?.works_count || akademisyen.yayin_sayisi || 0,
-        openAccess: 0, // OpenAlex listesinden hesaplanabilir veya authorStats'ta varsa
+        openAccess: openAccessCount,
         citations: authorStats?.cited_by_count || 0,
         hIndex: authorStats?.summary_stats?.h_index || akademisyen.h_indeks || 0,
         projects: akademisyen.proje_sayisi || 0,
+        wosCount,
+        scopusCount,
     };
 
     return (
@@ -92,6 +121,7 @@ export default async function AkademisyenProfilPage({ params }) {
             akademisyen={filteredAkademisyen}
             stats={stats}
             openAlexWorks={openAlexWorks}
+            authorTopics={authorStats?.topics ?? []}
         />
     );
 }

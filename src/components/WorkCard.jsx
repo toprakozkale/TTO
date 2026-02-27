@@ -17,7 +17,21 @@ export default function WorkCard({ work }) {
     } = work;
 
     const authors = authorships?.map(a => a.author.display_name).join(", ");
-    const journalName = primary_location?.source?.display_name || "Bilinmeyen Dergi";
+    const journalName = primary_location?.source?.display_name
+        || (() => {
+            // Try to extract domain from landing page URL as a hint
+            const url = primary_location?.landing_page_url;
+            if (url) {
+                try {
+                    const hostname = new URL(url).hostname.replace('www.', '');
+                    return hostname;
+                } catch { /* ignore */ }
+            }
+            // Type-based fallback
+            if (type === 'proceedings-article' || type === 'conference-paper') return 'Konferans Bildirisi';
+            if (type === 'book-chapter') return 'Kitap Bölümü';
+            return 'Bilinmeyen Kaynak';
+        })();
     const doiUrl = doi ? (doi.startsWith('http') ? doi : `https://doi.org/${doi}`) : null;
 
     const biblioText = [
@@ -81,10 +95,30 @@ export default function WorkCard({ work }) {
                     {authors}
                 </p>
 
-                <div className="flex items-center gap-2 text-xs font-medium">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
                     <span className="text-hmku-primary">{journalName}</span>
                     <span className="text-slate-300">•</span>
                     <span className="text-slate-500">{biblioText}</span>
+                    {work.journalIndexes && work.journalIndexes.length > 0 && (
+                        <>
+                            <span className="text-slate-300">•</span>
+                            {work.journalIndexes.map(index => (
+                                <span
+                                    key={index}
+                                    className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${index === 'SCIE' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                        index === 'SSCI' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                            index === 'AHCI' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                                index === 'ESCI' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' :
+                                                    index === 'SCOPUS' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                                        index === 'TRDIZIN' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                            'bg-slate-50 text-slate-600 border-slate-200'
+                                        }`}
+                                >
+                                    {index === 'SCIE' ? 'SCI-E' : index === 'TRDIZIN' ? 'TRDizin' : index}
+                                </span>
+                            ))}
+                        </>
+                    )}
                 </div>
             </div>
         </div>

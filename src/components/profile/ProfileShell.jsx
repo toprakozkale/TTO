@@ -131,12 +131,8 @@ function AnaSayfaPanel({ akademisyen, stats }) {
         { label: "Atıf (OpenAlex)", value: stats?.citations ?? 0, badge: null },
         { label: "H-İndeks (OpenAlex)", value: stats?.hIndex ?? 0, badge: null },
         { label: "Proje", value: stats?.projects ?? 0, badge: null },
-        { label: "Yayın (WoS)", value: 0, badge: null },
-        { label: "Atıf (WoS)", value: 0, badge: null },
-        { label: "H-İndeks (WoS)", value: 0, badge: null },
-        { label: "Yayın (Scopus)", value: 0, badge: null },
-        { label: "Atıf (Scopus)", value: 0, badge: null },
-        { label: "H-İndeks (Scopus)", value: 0, badge: null },
+        { label: "Yayın (WoS)", value: stats?.wosCount ?? 0, badge: null },
+        { label: "Yayın (Scopus)", value: stats?.scopusCount ?? 0, badge: null },
         {
             label: "Açık Erişim",
             value: stats?.openAccess ?? 0,
@@ -308,8 +304,9 @@ function EgitimPanel() {
 }
 
 
-function ArastirmaPanel() {
-    const [activeTab, setActiveTab] = useState("avesis");
+function ArastirmaPanel({ authorTopics = [] }) {
+    const SHOW_LIMIT = 20;
+    const [showAll, setShowAll] = useState(false);
 
     const temelAlanlar = [
         "Sosyal ve Beşeri Bilimler",
@@ -319,43 +316,18 @@ function ArastirmaPanel() {
         "Veri Bilimi",
     ];
 
-    const akademikAlanlar = {
-        avesis: {
-            label: "Avesis Araştırma Alanları",
-            count: 18,
-            items: [
-                "Bilgisayar Mühendisliği", "Yapay Zeka", "Makine Öğrenmesi",
-                "Derin Öğrenme", "Siber Güvenlik", "Doğal Dil İşleme",
-                "Veri Madenciliği", "Büyük Veri", "Nesnelerin İnterneti",
-                "Bulut Bilişim", "Bilgisayar Görüsü", "Ağ Güvenliği",
-                "Şifrelem ve Kriptografi", "Gömülü Sistemler", "Yazılım Mühendisliği",
-                "Bilişim Sistemleri", "Federe Öğrenme", "Biyoinformatik",
-            ],
-        },
-        wos: {
-            label: "WoS Araştırma Alanları",
-            count: 12,
-            items: [
-                "Computer Science", "Engineering", "Information Science & Library Science",
-                "Telecommunications", "Automation & Control Systems", "Operations Research",
-                "Mathematics", "Neurosciences", "Biochemistry", "Physics", "Statistics", "Business",
-            ],
-        },
-        scopus: {
-            label: "Scopus Araştırma Alanları",
-            count: 10,
-            items: [
-                "Computer Science", "Engineering", "Decision Sciences",
-                "Mathematics", "Medicine", "Biochemistry", "Physics and Astronomy",
-                "Business Management", "Environmental Science", "Social Sciences",
-            ],
-        },
-    };
+    // OpenAlex topic listesi: count'a göre azalan sırada
+    const sortedTopics = [...authorTopics].sort((a, b) => b.count - a.count);
 
-    const current = akademikAlanlar[activeTab];
-    const SHOW_LIMIT = 14;
-    const [showAll, setShowAll] = useState(false);
-    const displayed = showAll ? current.items : current.items.slice(0, SHOW_LIMIT);
+    // Alan (field) bazında grupla — sadece görüntüleme için başlık ekler
+    const groupedByField = sortedTopics.reduce((acc, topic) => {
+        const field = topic.field?.display_name || 'Diğer';
+        if (!acc[field]) acc[field] = [];
+        acc[field].push(topic);
+        return acc;
+    }, {});
+
+    const allTopics = showAll ? sortedTopics : sortedTopics.slice(0, SHOW_LIMIT);
 
     return (
         <div className="space-y-4">
@@ -364,7 +336,6 @@ function ArastirmaPanel() {
                 <h2 className="text-xl font-bold text-slate-800">Araştırma Alanları</h2>
                 <div className="mt-1.5 w-12 h-1 bg-slate-800 rounded-full" />
             </div>
-
 
             {/* Accordion 1 — Temel Araştırma Alanları */}
             <AccordionSection title="Araştırma Alanları" count={temelAlanlar.length}>
@@ -375,54 +346,60 @@ function ArastirmaPanel() {
                 </div>
             </AccordionSection>
 
-            {/* Accordion 2 — Akademik Faaliyetlere Dayalı */}
-            <AccordionSection title="Akademik Faaliyetlere Dayalı Araştırma Alanları">
-                {/* Tab bar */}
-                <div className="flex items-end gap-0 border-b border-slate-200 mb-5">
-                    {Object.entries(akademikAlanlar).map(([key, val]) => (
-                        <button
-                            key={key}
-                            onClick={() => { setActiveTab(key); setShowAll(false); }}
-                            className={`flex items-center gap-2 px-1 pb-2.5 mr-5 text-sm font-bold border-b-2 transition-all ${activeTab === key
-                                ? "text-blue-600 border-blue-600"
-                                : "text-slate-500 border-transparent hover:text-slate-700"
-                                }`}
-                        >
+            {/* Accordion 2 — OpenAlex Konuları (WoS) */}
+            <AccordionSection title="Akademik Faaliyetlere Dayalı Araştırma Alanları (WoS/OpenAlex)" count={sortedTopics.length}>
+                {sortedTopics.length === 0 ? (
+                    <p className="text-sm text-slate-400 italic">OpenAlex konu verisi bulunamadı.</p>
+                ) : (
+                    <>
+                        {/* Chip grid */}
+                        <div className="flex flex-wrap gap-2">
+                            {allTopics.map((topic) => (
+                                <span
+                                    key={topic.display_name}
+                                    title={`${topic.subfield?.display_name || ''} • ${topic.field?.display_name || ''} • ${topic.count} yayın`}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-slate-700 bg-white border border-slate-200 rounded-lg hover:border-slate-300 transition-colors cursor-default"
+                                >
+                                    {/* Count badge */}
+                                    <span className="text-[10px] font-black text-slate-400 leading-none">
+                                        {topic.count}
+                                    </span>
+                                    {topic.display_name}
+                                </span>
+                            ))}
+                            {!showAll && sortedTopics.length > SHOW_LIMIT && (
+                                <button
+                                    onClick={() => setShowAll(true)}
+                                    className="inline-flex items-center px-3 py-1.5 text-[12px] font-bold text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                                >
+                                    Daha Fazla {" >>"}
+                                </button>
+                            )}
+                        </div>
 
-                            {key === "avesis" ? "Avesis" : key === "wos" ? "WoS" : "Scopus"}
-                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeTab === key ? "bg-blue-600 text-white shadow-sm shadow-blue-500/20" : "bg-slate-200 text-slate-500"
-                                }`}>{val.count}</span>
-                        </button>
-
-                    ))}
-                </div>
-
-                {/* Alan başlığı */}
-                <h3 className="text-sm font-bold text-slate-800 mb-3">{current.label}</h3>
-
-                {/* Chip grid */}
-                <div className="flex flex-wrap gap-2">
-                    {displayed.map((item) => (
-                        <span key={item} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-slate-700 bg-white border border-slate-200 rounded-lg hover:border-slate-300 transition-colors">
-                            {/* Küçük dairesel open-access benzeri ikon */}
-                            <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8">
-                                <circle cx="8" cy="8" r="6.5" />
-                                <path d="M8 5v3.5l2 2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                            {item}
-                        </span>
-                    ))}
-                    {!showAll && current.items.length > SHOW_LIMIT && (
-                        <button
-                            onClick={() => setShowAll(true)}
-                            className="inline-flex items-center px-3 py-1.5 text-[12px] font-bold text-blue-600 hover:text-blue-700 hover:underline transition-colors"
-                        >
-                            Daha Fazla {" >>"}
-                        </button>
-
-
-                    )}
-                </div>
+                        {/* Field breakdown */}
+                        {showAll && (
+                            <div className="mt-6 space-y-4 border-t border-slate-100 pt-4">
+                                {Object.entries(groupedByField).map(([field, topics]) => (
+                                    <div key={field}>
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">{field}</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {topics.map(topic => (
+                                                <span
+                                                    key={topic.display_name}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-slate-700 bg-white border border-slate-200 rounded-lg"
+                                                >
+                                                    <span className="text-[10px] font-black text-slate-400">{topic.count}</span>
+                                                    {topic.display_name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )}
             </AccordionSection>
         </div>
     );
@@ -1045,7 +1022,7 @@ function IletisimPanel({ akademisyen }) {
 // ═══════════════════════════════════════════════════════════════════
 // ANA SHELL BİLEŞENİ
 // ═══════════════════════════════════════════════════════════════════
-export default function ProfileShell({ akademisyen, stats, openAlexWorks }) {
+export default function ProfileShell({ akademisyen, stats, openAlexWorks, authorTopics = [] }) {
     const [activeTab, setActiveTab] = useState("anasayfa");
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const gradient = getGradient(akademisyen?.name);
@@ -1056,7 +1033,7 @@ export default function ProfileShell({ akademisyen, stats, openAlexWorks }) {
         switch (activeTab) {
             case "anasayfa": return <AnaSayfaPanel akademisyen={akademisyen} stats={stats} />;
             case "egitim": return <EgitimPanel />;
-            case "arastirma": return <ArastirmaPanel />;
+            case "arastirma": return <ArastirmaPanel authorTopics={authorTopics} />;
             case "idari": return <IdariPanel />;
             case "yayinlar": return (
                 <YayinlarPanel
