@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import TTOLogo from "@/components/ui/TTOLogo";
 import Link from "next/link";
 import {
@@ -50,18 +51,10 @@ const NAV_ITEMS = [
     { id: "idari", label: "Akademik İdari Deneyim", icon: Briefcase },
     { id: "yayinlar", label: "Yayınlar & Eserler", icon: BookOpen },
     { id: "projeler", label: "Proje & Patent & Tasarım", icon: FileText },
-    { id: "faaliyetler", label: "Bilimsel & Mesleki Faaliyetler", icon: TrendingUp },
     { id: "iletisim", label: "İletişim", icon: Mail },
 ];
 
-// ─── Sosyal medya rozetleri ───────────────────────────────────────
-const SOCIAL_ICONS = [
-    { label: "GS", title: "Google Scholar", bg: "bg-red-500", textColor: "text-white", href: "#" },
-    { label: "SC", title: "Semantic Scholar", bg: "bg-orange-500", textColor: "text-white", href: "#" },
-    { label: "iD", title: "ORCID", bg: "bg-green-500", textColor: "text-white", href: "#" },
-    { label: "P", title: "Publons", bg: "bg-blue-600", textColor: "text-white", href: "#" },
-    { label: "RG", title: "ResearchGate", bg: "bg-teal-600", textColor: "text-white", href: "#" },
-];
+// SOCIAL_ICONS constant removed
 
 // ─── Deterministik renk ──────────────────────────────────────────
 const GRADIENTS = [
@@ -89,90 +82,59 @@ function getInitials(name = "") {
 // PANEL BİLEŞENLERİ
 // ═══════════════════════════════════════════════════════════════════
 
-function AnaSayfaPanel({ akademisyen, stats }) {
+function AnaSayfaPanel({ akademisyen, stats, chartData = [] }) {
     const [metriklerOpen, setMetriklerOpen] = useState(true);
 
-    const chartData = [
-        { year: "2016", publications: 5, citations: 20 },
-        { year: "2017", publications: 14, citations: 50 },
-        { year: "2018", publications: 14, citations: 120 },
-        { year: "2019", publications: 7, citations: 180 },
-        { year: "2020", publications: 26, citations: 300 },
-        { year: "2021", publications: 12, citations: 550 },
-        { year: "2022", publications: 21, citations: 1100 },
-        { year: "2023", publications: 58, citations: 2200 },
-        { year: "2024", publications: 69, citations: 3800 },
-        { year: "2025", publications: 37, citations: 4100 },
-        { year: "2026", publications: 4, citations: 0 },
-    ];
-
     const genelMetrikler = [
-        { label: "Yayın", value: stats?.totalPublications ?? 0, badge: null },
-        { label: "Yayın (WoS)", value: 197, badge: null },
-        { label: "Yayın (Scopus)", value: 201, badge: null },
-        { label: "Atıf (WoS)", value: 11117, badge: null },
-        { label: "H-İndeks (WoS)", value: 56, badge: null },
-        { label: "Atıf (Scopus)", value: 12144, badge: null },
-        { label: "H-İndeks (Scopus)", value: 57, badge: null },
-        { label: "Atıf (Scholar)", value: 15674, badge: null },
-        { label: "H-İndeks (Scholar)", value: 62, badge: null },
-        { label: "Atıf (TrDizin)", value: 10, badge: null },
-        { label: "H-İndeks (TrDizin)", value: 2, badge: null },
-        { label: "Atıf (Sobiad)", value: 594, badge: null },
-        { label: "H-İndeks (Sobiad)", value: 13, badge: null },
-        { label: "Atıf (Diğer Toplam)", value: 21, badge: null },
-        { label: "Proje", value: stats?.projects ?? 2, badge: null },
+        { key: "pub_oa", label: "Yayın", value: stats?.totalPublications ?? 0, badge: null },
+        { key: "cite_oa", label: "Atıf", value: stats?.citations ?? 0, badge: null },
+        { key: "h_oa", label: "H-İndeks", value: stats?.hIndex ?? 0, badge: null },
+        { key: "pub_wos", label: "Yayın", value: stats?.wosCount ?? 0, badge: null },
+        { key: "pub_scopus", label: "Yayın", value: stats?.scopusCount ?? 0, badge: null },
+        { key: "pub_trdizin", label: "Yayın", value: stats?.trdizinCount ?? 0, badge: null },
+        akademisyen?.atif_wos !== null && akademisyen?.atif_wos !== undefined && { key: "cite_wos", label: "Atıf", value: akademisyen.atif_wos, badge: null },
+        akademisyen?.hindeks_wos !== null && akademisyen?.hindeks_wos !== undefined && { key: "h_wos", label: "H-İndeks", value: akademisyen.hindeks_wos, badge: null },
+        akademisyen?.atif_scopus !== null && akademisyen?.atif_scopus !== undefined && { key: "cite_scopus", label: "Atıf", value: akademisyen.atif_scopus, badge: null },
+        akademisyen?.hindeks_scopus !== null && akademisyen?.hindeks_scopus !== undefined && { key: "h_scopus", label: "H-İndeks", value: akademisyen.hindeks_scopus, badge: null },
+        akademisyen?.atif_trdizin !== null && akademisyen?.atif_trdizin !== undefined && { key: "cite_trdizin", label: "Atıf", value: akademisyen.atif_trdizin, badge: null },
+        akademisyen?.hindeks_trdizin !== null && akademisyen?.hindeks_trdizin !== undefined && { key: "h_trdizin", label: "H-İndeks", value: akademisyen.hindeks_trdizin, badge: null },
+        { key: "projeler", label: "Proje", value: stats?.projects ?? 0, badge: null },
         {
+            key: "oa",
             label: "Açık Erişim",
-            value: stats?.openAccess ?? 9,
+            value: stats?.openAccess ?? 0,
             badge: (
                 <svg viewBox="0 0 24 24" className="w-8 h-8 text-orange-500 flex-shrink-0" fill="currentColor">
                     <path d="M12 1C8.676 1 6 3.676 6 7v1H4v15h16V8h-2V7c0-3.324-2.676-6-6-6zm0 2c2.276 0 4 1.724 4 4v1H8V7c0-2.276 1.724-4 4-4zm0 9a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" />
                 </svg>
             ),
         },
-    ];
+    ].filter(Boolean);
 
     const genelBilgiler = [
-        {
+        akademisyen?.kurum_bilgisi && {
             label: "Kurum Bilgileri",
-            value: "Mühendislik Fakültesi, Bilgisayar Mühendisliği",
+            value: akademisyen.kurum_bilgisi,
         },
-        {
-            label: "WoS Araştırma Alanları",
-            value: "Computer Science, Engineering, Information Science",
+        akademisyen?.arastirma_alanlari?.length > 0 && {
+            label: "Araştırma Alanları",
+            value: akademisyen.arastirma_alanlari.join(", "),
         },
-        {
-            label: "Scopus Araştırma Alanları",
-            value: "Computer Science, Engineering, Decision Sciences",
-        },
-        {
-            label: "Avesis Araştırma Alanları",
-            value: "Yapay Zeka, Makine Öğrenmesi, Veri Madenciliği, Siber Güvenlik",
-        },
-        {
+        akademisyen?.yayinlardaki_isimler?.length > 0 && {
             label: "Yayınlardaki İsimleri",
-            value: akademisyen?.name
-                ? akademisyen.name
-                    .split(" ")
-                    .filter((p) => !["prof.", "doç.", "dr."].includes(p.toLowerCase()))
-                    .map((_, i, arr) =>
-                        i === 0 ? arr[0][0] + ". " + arr[arr.length - 1] : null
-                    )
-                    .filter(Boolean)
-                    .join(", ")
-                : "Kaya, A.",
+            value: akademisyen.yayinlardaki_isimler.join(", "),
         },
-    ];
+    ].filter(Boolean);
 
     const metrikler = [
-        { label: "Yayın (OpenAlex)", value: stats?.totalPublications ?? 0, badge: null },
-        { label: "Atıf (OpenAlex)", value: stats?.citations ?? 0, badge: null },
-        { label: "H-İndeks (OpenAlex)", value: stats?.hIndex ?? 0, badge: null },
-        { label: "Proje", value: stats?.projects ?? 0, badge: null },
-        { label: "Yayın (WoS)", value: stats?.wosCount ?? 0, badge: null },
-        { label: "Yayın (Scopus)", value: stats?.scopusCount ?? 0, badge: null },
+        { key: "pub_oa", label: "Yayın", value: stats?.totalPublications ?? 0, badge: null },
+        { key: "cite_oa", label: "Atıf", value: stats?.citations ?? 0, badge: null },
+        { key: "h_oa", label: "H-İndeks", value: stats?.hIndex ?? 0, badge: null },
+        { key: "projeler", label: "Proje", value: stats?.projects ?? 0, badge: null },
+        { key: "pub_wos", label: "Yayın", value: stats?.wosCount ?? 0, badge: null },
+        { key: "pub_scopus", label: "Yayın", value: stats?.scopusCount ?? 0, badge: null },
         {
+            key: "oa",
             label: "Açık Erişim",
             value: stats?.openAccess ?? 0,
             badge: (
@@ -231,8 +193,8 @@ function AnaSayfaPanel({ akademisyen, stats }) {
 
                         {/* Metrik grid */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden">
-                            {metrikler.map(({ label, value, badge }) => (
-                                <div key={label} className="bg-white p-4 flex items-start justify-between gap-2">
+                            {metrikler.map(({ key, label, value, badge }) => (
+                                <div key={key || label} className="bg-white p-4 flex items-start justify-between gap-2">
                                     <div>
                                         <p className="text-[11px] text-slate-500 leading-tight mb-1">{label}</p>
                                         <p className="text-2xl font-bold text-slate-800 leading-none">{value}</p>
@@ -299,7 +261,7 @@ function AnaSayfaPanel({ akademisyen, stats }) {
                                     yAxisId="right"
                                     type="monotone"
                                     dataKey="citations"
-                                    name="Atıf Sayısı (SCOPUS)"
+                                    name="Atıf Sayısı "
                                     stroke="#1e293b"
                                     strokeWidth={3}
                                     dot={{ fill: '#1e293b', r: 4 }}
@@ -313,8 +275,8 @@ function AnaSayfaPanel({ akademisyen, stats }) {
                 {/* Detaylı metrik tablosu */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden">
-                        {genelMetrikler.map(({ label, value, badge }) => (
-                            <div key={label} className="bg-white p-4 flex items-start justify-between gap-2">
+                        {genelMetrikler.map(({ key, label, value, badge }) => (
+                            <div key={key || label} className="bg-white p-4 flex items-start justify-between gap-2">
                                 <div>
                                     <p className="text-[11px] text-slate-500 leading-tight mb-1">{label}</p>
                                     <p className="text-2xl font-bold text-slate-800 leading-none">{value}</p>
@@ -360,21 +322,10 @@ function AccordionSection({ title, count, children, defaultOpen = true }) {
     );
 }
 
-function EgitimPanel() {
-    const egitimler = [
-        { period: "2012 – 2017", degree: "Doktora", university: "Ankara Üniversitesi, Fen Bilimleri Enstitüsü, Türkiye" },
-        { period: "2010 – 2012", degree: "Yüksek Lisans", university: "Hacettepe Üniversitesi, Fen Bilimleri Enstitüsü, Türkiye" },
-        { period: "2009 – 2010", degree: "Yüksek Lisans", university: "ODTÜ, Bilişim Enstitüsü, Türkiye" },
-        { period: "2005 – 2009", degree: "Lisans", university: "Hacettepe Üniversitesi, Mühendislik Fakültesi, Türkiye" },
-    ];
-
-    const tezler = [
-        { year: "2017", degree: "Doktora", title: "Derin öğrenme yöntemleriyle ağ trafiği anomali tespiti: Türkiye örneği", university: "Ankara Üniversitesi, Fen Bilimleri Enstitüsü" },
-        { year: "2012", degree: "Yüksek Lisans", title: "Makine öğrenmesi tabanlı siber saldırı sınıflandırma yöntemlerinin karşılaştırmalı analizi", university: "Hacettepe Üniversitesi, Fen Bilimleri Enstitüsü" },
-        { year: "2010", degree: "Yüksek Lisans", title: "Doğal dil işleme ve metin madenciliği uygulamaları", university: "ODTÜ, Bilişim Enstitüsü" },
-    ];
-
-    const diller = ["İngilizce"];
+function EgitimPanel({ akademisyen }) {
+    const egitimler = akademisyen?.egitim_bilgileri || [];
+    const tezler = akademisyen?.yapilan_tezler || [];
+    const diller = akademisyen?.yabanci_diller || [];
 
     return (
         <div className="space-y-0">
@@ -384,7 +335,6 @@ function EgitimPanel() {
                 <div className="mt-1.5 w-14 h-1 bg-slate-800 rounded-full" />
             </div>
 
-
             {/* 2 sütun accordion grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                 {/* Sol — Eğitim Bilgileri */}
@@ -392,9 +342,13 @@ function EgitimPanel() {
                     <div className="space-y-5">
                         {egitimler.map((e, i) => (
                             <div key={i}>
-                                <p className="text-[11px] text-slate-400 font-medium mb-0.5">{e.period}</p>
-                                <p className="text-sm font-bold text-slate-800">{e.degree}</p>
-                                <p className="text-[12px] text-slate-500 mt-0.5 leading-snug">{e.university}</p>
+                                <p className="text-[11px] text-slate-400 font-medium mb-0.5">
+                                    {e.baslangic_yili} – {e.bitis_yili || "Devam Ediyor"}
+                                </p>
+                                <p className="text-sm font-bold text-slate-800">{e.derece}</p>
+                                <p className="text-[12px] text-slate-500 mt-0.5 leading-snug">
+                                    {e.universite}, {e.enstitu_fakulte}, {e.ulke}
+                                </p>
                             </div>
                         ))}
                     </div>
@@ -405,10 +359,10 @@ function EgitimPanel() {
                     <div className="space-y-5">
                         {tezler.map((t, i) => (
                             <div key={i}>
-                                <p className="text-[11px] text-slate-400 font-medium mb-0.5">{t.year}</p>
-                                <p className="text-sm font-bold text-slate-800">{t.degree}</p>
-                                <p className="text-[12px] text-slate-600 mt-0.5 leading-snug">{t.title}</p>
-                                <p className="text-[11px] text-slate-400 mt-0.5">{t.university}</p>
+                                <p className="text-[11px] text-slate-400 font-medium mb-0.5">{t.yil}</p>
+                                <p className="text-sm font-bold text-slate-800">{t.derece}</p>
+                                <p className="text-[12px] text-slate-600 mt-0.5 leading-snug">{t.baslik}</p>
+                                <p className="text-[11px] text-slate-400 mt-0.5">{t.universite}, {t.enstitu}</p>
                             </div>
                         ))}
                     </div>
@@ -428,17 +382,11 @@ function EgitimPanel() {
 }
 
 
-function ArastirmaPanel({ authorTopics = [] }) {
+function ArastirmaPanel({ akademisyen, authorTopics = [] }) {
     const SHOW_LIMIT = 20;
     const [showAll, setShowAll] = useState(false);
 
-    const temelAlanlar = [
-        "Sosyal ve Beşeri Bilimler",
-        "Bilgisayar ve Bilişim Bilimleri",
-        "Yapay Zeka ve Makine Öğrenmesi",
-        "Siber Güvenlik",
-        "Veri Bilimi",
-    ];
+    const temelAlanlar = akademisyen?.arastirma_alanlari || [];
 
     // OpenAlex topic listesi: count'a göre azalan sırada
     const sortedTopics = [...authorTopics].sort((a, b) => b.count - a.count);
@@ -471,9 +419,9 @@ function ArastirmaPanel({ authorTopics = [] }) {
             </AccordionSection>
 
             {/* Accordion 2 — OpenAlex Konuları (WoS) */}
-            <AccordionSection title="Akademik Faaliyetlere Dayalı Araştırma Alanları (WoS/OpenAlex)" count={sortedTopics.length}>
+            <AccordionSection title="Akademik Faaliyetlere Dayalı Araştırma Alanları" count={sortedTopics.length}>
                 {sortedTopics.length === 0 ? (
-                    <p className="text-sm text-slate-400 italic">OpenAlex konu verisi bulunamadı.</p>
+                    <p className="text-sm text-slate-400 italic">Konu verisi bulunamadı.</p>
                 ) : (
                     <>
                         {/* Chip grid */}
@@ -530,38 +478,9 @@ function ArastirmaPanel({ authorTopics = [] }) {
 }
 
 
-function IdariPanel() {
-    const unvanlar = [
-        { period: "2024 - Devam Ediyor", title: "Prof. Dr.", university: "Hatay Mustafa Kemal Üniversitesi, Mühendislik Fakültesi, Bilgisayar Mühendisliği" },
-        { period: "2020 - 2024", title: "Doç. Dr.", university: "Hatay Mustafa Kemal Üniversitesi, Mühendislik Fakültesi" },
-        { period: "2017 - 2020", title: "Dr. Öğr. Üyesi", university: "Hacettepe Üniversitesi, Mühendislik Fakültesi" },
-        { period: "2012 - 2017", title: "Araştırma Görevlisi", university: "Ankara Üniversitesi, Fen Bilimleri Enstitüsü" },
-        { period: "2009 - 2012", title: "Araştırma Görevlisi", university: "Hacettepe Üniversitesi, Fen Bilimleri Enstitüsü" },
-    ];
-
-    const yonetimsel = [
-        { period: "2024 - Devam Ediyor", title: "TTO Araştırma Koordinatörü", university: "Hatay Mustafa Kemal Üniversitesi, REKTÖRLÜK" },
-        { period: "2024 - Devam Ediyor", title: "Fakülte Kurulu Üyesi", university: "Hatay Mustafa Kemal Üniversitesi, Mühendislik Fakültesi, Bilgisayar Mühendisliği" },
-    ];
-
-    const dersler = {
-        "Lisans": [
-            "BİL101-Programlamaya Giriş-I",
-            "BİL102-Programlamaya Giriş-II",
-            "BİL201-Veri Yapıları ve Algoritmalar",
-            "BİL301-Yapay Zeka",
-            "BİL302-Makine Öğrenmesi",
-            "BİL401-Derin Öğrenme",
-            "BİL402-Doğal Dil İşleme",
-            "BİL210-Veritabanı Sistemleri",
-        ],
-        "Lisans Çift Anadal / Yan Dal": [
-            "BİL5001-İleri Yapay Zeka Yöntemleri",
-            "BİL6002-Büyük Veri Analitiği",
-            "BİL6010-Siber Güvenliğe Giriş",
-            "BİL5022-Makine Öğrenmesi Uygulamaları",
-        ],
-    };
+function IdariPanel({ akademisyen }) {
+    const unvanlar = akademisyen?.akademik_unvanlar || [];
+    const yonetimsel = akademisyen?.yonetimsel_gorevler || [];
 
     return (
         <div className="space-y-4">
@@ -571,7 +490,6 @@ function IdariPanel() {
                 <div className="mt-1.5 w-14 h-1 bg-slate-800 rounded-full" />
             </div>
 
-
             {/* 2 sütun grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                 {/* Sol — Akademik Ünvanlar */}
@@ -579,9 +497,13 @@ function IdariPanel() {
                     <div className="space-y-5">
                         {unvanlar.map((u, i) => (
                             <div key={i}>
-                                <p className="text-[11px] text-slate-400 font-medium mb-0.5">{u.period}</p>
-                                <p className="text-sm font-bold text-slate-800">{u.title}</p>
-                                <p className="text-[12px] text-slate-500 mt-0.5 leading-snug">{u.university}</p>
+                                <p className="text-[11px] text-slate-400 font-medium mb-0.5">
+                                    {u.baslangic_yili} – {u.bitis_yili || "Devam Ediyor"}
+                                </p>
+                                <p className="text-sm font-bold text-slate-800">{u.unvan}</p>
+                                <p className="text-[12px] text-slate-500 mt-0.5 leading-snug">
+                                    {u.universite}, {u.fakulte}, {u.bolum}
+                                </p>
                             </div>
                         ))}
                     </div>
@@ -592,45 +514,18 @@ function IdariPanel() {
                     <div className="space-y-5">
                         {yonetimsel.map((y, i) => (
                             <div key={i}>
-                                <p className="text-[11px] text-slate-400 font-medium mb-0.5">{y.period}</p>
-                                <p className="text-sm font-bold text-slate-800">{y.title}</p>
-                                <p className="text-[12px] text-slate-500 mt-0.5 leading-snug">{y.university}</p>
+                                <p className="text-[11px] text-slate-400 font-medium mb-0.5">
+                                    {y.baslangic_yili} – {y.bitis_yili || "Devam Ediyor"}
+                                </p>
+                                <p className="text-sm font-bold text-slate-800">{y.gorev}</p>
+                                <p className="text-[12px] text-slate-500 mt-0.5 leading-snug">
+                                    {y.universite}, {y.birim}
+                                </p>
                             </div>
                         ))}
                     </div>
                 </AccordionSection>
             </div>
-
-            {/* Verdiği Dersler — tam genişlik */}
-            <AccordionSection title="Verdiği Dersler" count={Object.values(dersler).flat().length}>
-                <div className="space-y-5">
-                    {Object.entries(dersler).map(([seviye, liste]) => (
-                        <div key={seviye}>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">{seviye}</p>
-
-                            <div className="space-y-1.5">
-                                {liste.map((ders) => (
-                                    <div key={ders} className="flex items-center gap-2">
-                                        <p className="text-sm font-bold text-slate-800 flex-1">{ders}</p>
-                                        <button title="Detay" className="text-slate-400 hover:text-blue-500 transition-colors flex-shrink-0">
-                                            <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                                                <circle cx="8" cy="8" r="6.5" />
-                                                <path d="M8 7v4M8 5.5v.5" strokeLinecap="round" />
-                                            </svg>
-                                        </button>
-                                        <button title="Program" className="text-slate-400 hover:text-blue-500 transition-colors flex-shrink-0">
-                                            <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                                                <rect x="1.5" y="2.5" width="13" height="12" rx="1.5" />
-                                                <path d="M5 1v3M11 1v3M1.5 7h13" strokeLinecap="round" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </AccordionSection>
         </div>
     );
 }
@@ -793,155 +688,51 @@ function YayinlarPanel({ name, orcid, openAlexWorks }) {
     );
 }
 
-function ProjelerPanel() {
-    const projeler = [
-        {
-            period: "2024 - 2026",
-            title: "Yapay Zeka Destekli Siber Tehdit Tespiti: Gerçek Zamanlı Ağ Trafiği Analizi ile Saldırı Sınıflandırma",
-            funder: "TÜBİTAK Projesi , 1001 - Bilimsel ve Teknolojik Araştırma Projelerini Destekleme Programı",
-            researchers: [{ name: "A. Kaya", role: "Yürütücü" }, { name: "M. Yılmaz", role: "Araştırmacı" }],
-        },
-        {
-            period: "2023 - 2025",
-            title: "Federe Öğrenme Tabanlı Sağlık Verisi Gizlilik Koruması: Dağıtık Ortamlarda Hasta Verilerinin Güvenli Analizi",
-            funder: "Yükseköğretim Kurumları Destekli Proje , BAP Alt Yapı",
-            researchers: [{ name: "A. Kaya", role: "Yürütücü" }],
-        },
-        {
-            period: "2021 - 2023",
-            title: "IoT Cihazları için Hafif Şifreleme Protokolleri Geliştirme ve Güvenlik Analizi",
-            funder: "HMKÜ Bilimsel Araştırma Projeleri Komisyonu , BAP Standart",
-            researchers: [{ name: "A. Kaya", role: "Yürütücü" }, { name: "H. Arslan", role: "Araştırmacı" }],
-        },
-    ];
+import { Hourglass } from "lucide-react";
 
+function ProjelerPanel() {
     return (
         <div className="space-y-4">
             {/* Sayfa başlığı */}
             <div className="mb-6">
-                <h2 className="text-xl font-bold text-slate-800">Desteklenen Projeler</h2>
+                <h2 className="text-xl font-bold text-slate-800">Proje & Patent & Tasarım</h2>
                 <div className="mt-1.5 w-14 h-1 bg-slate-800 rounded-full" />
             </div>
 
-
-            <AccordionSection title="Desteklenen Projeler" count={projeler.length}>
-                <div className="space-y-7">
-                    {projeler.map((p, i) => (
-                        <div key={i}>
-                            <p className="text-[11px] text-slate-400 font-medium mb-1">{p.period}</p>
-                            <p className="text-sm font-bold text-slate-800 leading-snug mb-1">{p.title}</p>
-                            <p className="text-[12px] text-slate-500 mb-1.5">{p.funder}</p>
-                            <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                                {p.researchers.map((r) => (
-                                    <span key={r.name} className="text-[12px]">
-                                        <span className="text-blue-500 font-medium hover:underline cursor-pointer">{r.name}</span>
-                                        <span className="text-slate-400"> ({r.role})</span>
-                                    </span>
-                                ))}
-                            </div>
-                            {i < projeler.length - 1 && <hr className="mt-6 border-slate-100" />}
-                        </div>
-                    ))}
-                </div>
-            </AccordionSection>
-        </div>
-    );
-}
-
-
-function FaaliyetlerPanel() {
-    const dergiFaaliyetleri = [
-        { period: "2024 - Devam Ediyor", journal: "IEEE Transactions on Neural Networks and Learning Systems", role: "Hakemlik" },
-        { period: "2024 - Devam Ediyor", journal: "Expert Systems with Applications", role: "Hakemlik" },
-        { period: "2023 - Devam Ediyor", journal: "IEEE Access", role: "Editörler Kurulu Üyesi" },
-        { period: "2022 - Devam Ediyor", journal: "Journal of Cybersecurity", role: "Hakemlik" },
-        { period: "2021 - Devam Ediyor", journal: "Applied Soft Computing", role: "Hakemlik" },
-    ];
-
-    const konferansFaaliyetleri = [
-        { period: "2024", journal: "IEEE International Conference on Machine Learning (ICML 2024)", role: "Program Komitesi Üyesi" },
-        { period: "2023", journal: "NeurIPS 2023", role: "Hakem" },
-        { period: "2022", journal: "ACM CCS 2022", role: "Hakem" },
-    ];
-
-    return (
-        <div className="space-y-4">
-            <div className="mb-6">
-                <h2 className="text-xl font-bold text-slate-800">Bilimsel & Mesleki Faaliyetler</h2>
-                <div className="mt-1.5 w-16 h-1 bg-slate-800 rounded-full" />
+            <div className="flex flex-col items-center justify-center h-96 text-slate-300">
+                <Hourglass className="w-16 h-16" />
             </div>
-
-
-            <AccordionSection title="Bilimsel Dergilerdeki Faaliyetler" count={dergiFaaliyetleri.length}>
-                <div className="space-y-5">
-                    {dergiFaaliyetleri.map((f, i) => (
-                        <div key={i}>
-                            <p className="text-[11px] text-slate-400 font-medium mb-0.5">{f.period}</p>
-                            <p className="text-sm font-bold text-slate-800">{f.journal}</p>
-                            <p className="text-[12px] text-slate-500 mt-0.5">{f.role}</p>
-                            {i < dergiFaaliyetleri.length - 1 && <hr className="mt-4 border-slate-100" />}
-                        </div>
-                    ))}
-                </div>
-            </AccordionSection>
-
-            <AccordionSection title="Konferans Faaliyetleri" count={konferansFaaliyetleri.length}>
-                <div className="space-y-5">
-                    {konferansFaaliyetleri.map((f, i) => (
-                        <div key={i}>
-                            <p className="text-[11px] text-slate-400 font-medium mb-0.5">{f.period}</p>
-                            <p className="text-sm font-bold text-slate-800">{f.journal}</p>
-                            <p className="text-[12px] text-slate-500 mt-0.5">{f.role}</p>
-                            {i < konferansFaaliyetleri.length - 1 && <hr className="mt-4 border-slate-100" />}
-                        </div>
-                    ))}
-                </div>
-            </AccordionSection>
         </div>
     );
 }
 
-function BaskilarPanel({ stats }) {
-    const chartData = [
-        { year: "2016", publications: 5, citations: 20 },
-        { year: "2017", publications: 14, citations: 50 },
-        { year: "2018", publications: 14, citations: 120 },
-        { year: "2019", publications: 7, citations: 180 },
-        { year: "2020", publications: 26, citations: 300 },
-        { year: "2021", publications: 12, citations: 550 },
-        { year: "2022", publications: 21, citations: 1100 },
-        { year: "2023", publications: 58, citations: 2200 },
-        { year: "2024", publications: 69, citations: 3800 },
-        { year: "2025", publications: 37, citations: 4100 },
-        { year: "2026", publications: 4, citations: 0 },
-    ];
 
+function BaskilarPanel({ stats, akademisyen, chartData = [] }) {
     const metrikler = [
-        { label: "Yayın", value: stats?.totalPublications ?? 267, badge: null },
-        { label: "Yayın (WoS)", value: 197, badge: null },
-        { label: "Yayın (Scopus)", value: 201, badge: null },
-        { label: "Atıf (WoS)", value: 11117, badge: null },
-        { label: "H-İndeks (WoS)", value: 56, badge: null },
-        { label: "Atıf (Scopus)", value: 12144, badge: null },
-        { label: "H-İndeks (Scopus)", value: 57, badge: null },
-        { label: "Atıf (Scholar)", value: 15674, badge: null },
-        { label: "H-İndeks (Scholar)", value: 62, badge: null },
-        { label: "Atıf (TrDizin)", value: 10, badge: null },
-        { label: "H-İndeks (TrDizin)", value: 2, badge: null },
-        { label: "Atıf (Sobiad)", value: 594, badge: null },
-        { label: "H-İndeks (Sobiad)", value: 13, badge: null },
-        { label: "Atıf (Diğer Toplam)", value: 21, badge: null },
-        { label: "Proje", value: 2, badge: null },
+        { key: "pub_oa", label: "Yayın", value: stats?.totalPublications ?? 0, badge: null },
+        { key: "cite_oa", label: "Atıf", value: stats?.citations ?? 0, badge: null },
+        { key: "h_oa", label: "H-İndeks", value: stats?.hIndex ?? 0, badge: null },
+        { key: "pub_wos", label: "Yayın", value: stats?.wosCount ?? 0, badge: null },
+        { key: "pub_scopus", label: "Yayın", value: stats?.scopusCount ?? 0, badge: null },
+        { key: "pub_trdizin", label: "Yayın", value: stats?.trdizinCount ?? 0, badge: null },
+        akademisyen?.atif_wos !== null && akademisyen?.atif_wos !== undefined && { key: "cite_wos", label: "Atıf", value: akademisyen.atif_wos, badge: null },
+        akademisyen?.hindeks_wos !== null && akademisyen?.hindeks_wos !== undefined && { key: "h_wos", label: "H-İndeks", value: akademisyen.hindeks_wos, badge: null },
+        akademisyen?.atif_scopus !== null && akademisyen?.atif_scopus !== undefined && { key: "cite_scopus", label: "Atıf", value: akademisyen.atif_scopus, badge: null },
+        akademisyen?.hindeks_scopus !== null && akademisyen?.hindeks_scopus !== undefined && { key: "h_scopus", label: "H-İndeks", value: akademisyen.hindeks_scopus, badge: null },
+        akademisyen?.atif_trdizin !== null && akademisyen?.atif_trdizin !== undefined && { key: "cite_trdizin", label: "Atıf", value: akademisyen.atif_trdizin, badge: null },
+        akademisyen?.hindeks_trdizin !== null && akademisyen?.hindeks_trdizin !== undefined && { key: "h_trdizin", label: "H-İndeks", value: akademisyen.hindeks_trdizin, badge: null },
+        { key: "projeler", label: "Proje", value: stats?.projects ?? 0, badge: null },
         {
+            key: "oa",
             label: "Açık Erişim",
-            value: 9,
+            value: stats?.openAccess ?? 0,
             badge: (
                 <svg viewBox="0 0 24 24" className="w-8 h-8 text-orange-500 flex-shrink-0" fill="currentColor">
                     <path d="M12 1C8.676 1 6 3.676 6 7v1H4v15h16V8h-2V7c0-3.324-2.676-6-6-6zm0 2c2.276 0 4 1.724 4 4v1H8V7c0-2.276 1.724-4 4-4zm0 9a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" />
                 </svg>
             ),
         },
-    ];
+    ].filter(Boolean);
 
     return (
         <div className="space-y-6">
@@ -998,7 +789,7 @@ function BaskilarPanel({ stats }) {
                                 yAxisId="right"
                                 type="monotone"
                                 dataKey="citations"
-                                name="Atıf Sayısı (SCOPUS)"
+                                name="Atıf Sayısı "
                                 stroke="#1e293b"
                                 strokeWidth={3}
                                 dot={{ fill: '#1e293b', r: 4 }}
@@ -1011,8 +802,8 @@ function BaskilarPanel({ stats }) {
 
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden">
-                    {metrikler.map(({ label, value, badge }) => (
-                        <div key={label} className="bg-white p-4 flex items-start justify-between gap-2">
+                    {metrikler.map(({ key, label, value, badge }) => (
+                        <div key={key || label} className="bg-white p-4 flex items-start justify-between gap-2">
                             <div>
                                 <p className="text-[11px] text-slate-500 leading-tight mb-1">{label}</p>
                                 <p className="text-2xl font-bold text-slate-800 leading-none">{value}</p>
@@ -1073,72 +864,104 @@ function IletisimPanel({ akademisyen }) {
                 <div className="mt-1.5 w-12 h-1 bg-slate-800 rounded-full" />
             </div>
 
-
             {/* Adres Bilgileri */}
-            <AccordionSection title="Adres Bilgileri">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
-                        <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="10" />
-                            <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                        </svg>
+            {akademisyen?.avesis_url && (
+                <AccordionSection title="Adres Bilgileri">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
+                            <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                            </svg>
+                        </div>
+                        <a href={akademisyen.avesis_url} target="_blank" rel="noreferrer" className="text-sm text-slate-500 hover:text-blue-500 transition-colors">
+                            {akademisyen.avesis_url}
+                        </a>
                     </div>
-                    <a href="https://avesis.mku.edu.tr/ayhan.kaya" target="_blank" rel="noreferrer" className="text-sm text-slate-500 hover:text-blue-500 transition-colors">
-                        https://avesis.mku.edu.tr/ayhan.kaya
-                    </a>
-                </div>
-            </AccordionSection>
+                </AccordionSection>
+            )}
 
             {/* E-posta Bilgileri */}
-            <AccordionSection title="E-posta Bilgileri">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
-                        <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                            <polyline points="22,6 12,13 2,6" />
-                        </svg>
+            {akademisyen?.iletisim_email && (
+                <AccordionSection title="E-posta Bilgileri">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
+                            <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                <polyline points="22,6 12,13 2,6" />
+                            </svg>
+                        </div>
+                        <a href={`mailto:${akademisyen.iletisim_email}`} className="text-sm text-slate-500 hover:text-blue-500 transition-colors">
+                            {akademisyen.iletisim_email}
+                        </a>
                     </div>
-                    <a href={`mailto:${akademisyen?.email}`} className="text-sm text-slate-500 hover:text-blue-500 transition-colors">
-                        {akademisyen?.email}
-                    </a>
-                </div>
-            </AccordionSection>
+                </AccordionSection>
+            )}
 
             {/* Uluslararası Araştırmacı ID'leri */}
-            <AccordionSection title="Uluslararası Araştırmacı ID'leri">
-                <div className="flex items-center gap-4">
-                    {/* Google Scholar ikonu (kırmızı G benzeri) */}
-                    <div className="w-6 h-6 flex items-center justify-center font-bold text-red-500 text-sm italic">G</div>
-                    {/* Scopus ikonu (turuncu SC) */}
-                    <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center text-white text-[10px] font-bold">SC</div>
-                    {/* ORCID ikonu (yeşil ID) */}
-                    <div className="w-8 h-8 rounded-lg bg-[#A6CE39] flex items-center justify-center text-white text-[10px] font-bold">İD</div>
-                    {/* Publons/WoS ikonu (mavi P) */}
-                    <div className="w-8 h-8 rounded-lg bg-[#005595] flex items-center justify-center text-white text-[10px] font-bold">P</div>
-                    {/* YÖK ikonu (kırmızı Y/K benzeri) */}
-                    <div className="w-8 h-8 rounded-lg bg-[#E30613] flex items-center justify-center text-white text-[10px] font-bold tracking-tighter">YİK</div>
-                </div>
-            </AccordionSection>
+            {(akademisyen?.scholar_id || akademisyen?.scopus_id || akademisyen?.orcid_id || akademisyen?.publons_id || akademisyen?.yok_akademik_id) && (
+                <AccordionSection title="Uluslararası Araştırmacı ID'leri">
+                    <div className="flex flex-wrap items-center gap-4">
+                        {akademisyen?.scholar_id && (
+                            <a href={`https://scholar.google.com/citations?user=${akademisyen.scholar_id}`} target="_blank" rel="noreferrer" title="Google Scholar">
+                                <div className="w-6 h-6 flex items-center justify-center font-bold text-red-500 text-sm italic">G</div>
+                            </a>
+                        )}
+                        {akademisyen?.scopus_id && (
+                            <a href={`https://www.scopus.com/authid/detail.uri?authorId=${akademisyen.scopus_id}`} target="_blank" rel="noreferrer" title="Scopus">
+                                <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center text-white text-[10px] font-bold">SC</div>
+                            </a>
+                        )}
+                        {akademisyen?.orcid_id && (
+                            <a href={`https://orcid.org/${akademisyen.orcid_id}`} target="_blank" rel="noreferrer" title="ORCID">
+                                <div className="w-8 h-8 rounded-lg bg-[#A6CE39] flex items-center justify-center text-white text-[10px] font-bold">İD</div>
+                            </a>
+                        )}
+                        {akademisyen?.publons_id && (
+                            <a href={`https://publons.com/researcher/${akademisyen.publons_id}`} target="_blank" rel="noreferrer" title="Publons">
+                                <div className="w-8 h-8 rounded-lg bg-[#005595] flex items-center justify-center text-white text-[10px] font-bold">P</div>
+                            </a>
+                        )}
+                        {akademisyen?.yok_akademik_id && (
+                            <a href={`https://akademik.yok.gov.tr/AkademikArama/AkademisyenGorevOgrenimBilgileri?id=${akademisyen.yok_akademik_id}`} target="_blank" rel="noreferrer" title="YÖK Akademik">
+                                <div className="w-8 h-8 rounded-lg bg-[#E30613] flex items-center justify-center text-white text-[10px] font-bold tracking-tighter">YİK</div>
+                            </a>
+                        )}
+                    </div>
+                </AccordionSection>
+            )}
 
             {/* Sosyal Medya Hesapları */}
-            <AccordionSection title="Sosyal Medya Hesapları">
-                <div className="flex items-center gap-3">
-                    {["facebook", "linkedin", "researchgate", "instagram"].map((social) => (
-                        <div key={social} className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-white cursor-pointer hover:bg-slate-600 transition-colors">
-                            {social === "facebook" && <span className="font-bold text-sm">f</span>}
-                            {social === "linkedin" && <span className="font-bold text-sm">in</span>}
-                            {social === "researchgate" && <span className="font-bold text-xs italic">R<sup>G</sup></span>}
-                            {social === "instagram" && (
+            {(akademisyen?.facebook_url || akademisyen?.linkedin_url || akademisyen?.researchgate_url || akademisyen?.instagram_url) && (
+                <AccordionSection title="Sosyal Medya Hesapları">
+                    <div className="flex items-center gap-3">
+                        {akademisyen?.facebook_url && (
+                            <a href={akademisyen.facebook_url} target="_blank" rel="noreferrer" className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-white cursor-pointer hover:bg-slate-600 transition-colors">
+                                <span className="font-bold text-sm">f</span>
+                            </a>
+                        )}
+                        {akademisyen?.linkedin_url && (
+                            <a href={akademisyen.linkedin_url} target="_blank" rel="noreferrer" className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-white cursor-pointer hover:bg-slate-600 transition-colors">
+                                <span className="font-bold text-sm">in</span>
+                            </a>
+                        )}
+                        {akademisyen?.researchgate_url && (
+                            <a href={akademisyen.researchgate_url} target="_blank" rel="noreferrer" className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-white cursor-pointer hover:bg-slate-600 transition-colors">
+                                <span className="font-bold text-xs italic">R<sup>G</sup></span>
+                            </a>
+                        )}
+                        {akademisyen?.instagram_url && (
+                            <a href={akademisyen.instagram_url} target="_blank" rel="noreferrer" className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-white cursor-pointer hover:bg-slate-600 transition-colors">
                                 <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5">
                                     <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
                                     <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
                                     <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
                                 </svg>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </AccordionSection>
+                            </a>
+                        )}
+                    </div>
+                </AccordionSection>
+            )}
         </div>
     );
 }
@@ -1146,19 +969,93 @@ function IletisimPanel({ akademisyen }) {
 // ═══════════════════════════════════════════════════════════════════
 // ANA SHELL BİLEŞENİ
 // ═══════════════════════════════════════════════════════════════════
-export default function ProfileShell({ akademisyen, stats, openAlexWorks, authorTopics = [] }) {
+function DevelopmentDialog({ isOpen, onClose }) {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-300"
+                onClick={onClose}
+            />
+
+            {/* Modal Content */}
+            <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 fade-in duration-300">
+                <div className="p-8 text-center">
+                    <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-rose-100 rotate-3">
+                        <Sparkles className="w-8 h-8 text-hmku-primary" />
+                    </div>
+
+                    <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-4">
+                        Geliştirme Aşamasında
+                    </h3>
+
+                    <p className="text-sm text-slate-500 leading-relaxed mb-8">
+                        Bibliyografya platformumuz şu an geliştirme aşamasındadır. Deneyiminizi iyileştirmek için çalışıyoruz.
+                    </p>
+
+                    <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 mb-8">
+                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Geri Bildirim İçin</p>
+                        <a
+                            href="mailto:info@qoodly.com"
+                            className="text-sm font-bold text-hmku-dark hover:text-hmku-primary transition-colors underline decoration-hmku-primary/30 hover:decoration-hmku-primary"
+                        >
+                            info@qoodly.com
+                        </a>
+                    </div>
+
+                    <button
+                        onClick={onClose}
+                        className="w-full py-4 bg-hmku-dark text-white text-sm font-black rounded-2xl hover:bg-slate-800 transition-all active:scale-[0.98] shadow-lg shadow-slate-950/10"
+                    >
+                        Anladım, Devam Et
+                    </button>
+                </div>
+
+                {/* Decorative Elements */}
+                <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                    <TTOLogo size="w-24 h-24" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default function ProfileShell({ akademisyen, stats, openAlexWorks, authorTopics = [], chartData = [] }) {
     const [activeTab, setActiveTab] = useState("anasayfa");
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isDevDialogOpen, setIsDevDialogOpen] = useState(false);
+    const searchParams = useSearchParams();
+
+    useEffect(() => {
+        // Bir kez gösterilme kontrolü (localStorage)
+        const hasBeenShown = localStorage.getItem("tto_dev_notice_shown") === "1";
+        if (hasBeenShown) return;
+
+        // Hem referrer hem de search param kontrolü (farklı tarayıcı ve SPA geçiş senaryoları için)
+        const referrer = document.referrer;
+        const hasNoticeParam = searchParams.get("notice") === "1";
+
+        if (hasNoticeParam || (referrer && referrer.includes("/hakkimizda"))) {
+            const timer = setTimeout(() => {
+                setIsDevDialogOpen(true);
+                // Gösterildiğini işaretle
+                localStorage.setItem("tto_dev_notice_shown", "1");
+            }, 600);
+            return () => clearTimeout(timer);
+        }
+    }, [searchParams]);
     const gradient = getGradient(akademisyen?.name);
     const initials = getInitials(akademisyen?.name);
 
 
     const renderPanel = () => {
         switch (activeTab) {
-            case "anasayfa": return <AnaSayfaPanel akademisyen={akademisyen} stats={stats} />;
-            case "egitim": return <EgitimPanel />;
-            case "arastirma": return <ArastirmaPanel authorTopics={authorTopics} />;
-            case "idari": return <IdariPanel />;
+            case "anasayfa": return <AnaSayfaPanel akademisyen={akademisyen} stats={stats} chartData={chartData} />;
+            case "egitim": return <EgitimPanel akademisyen={akademisyen} />;
+            case "arastirma": return <ArastirmaPanel akademisyen={akademisyen} authorTopics={authorTopics} />;
+            case "idari": return <IdariPanel akademisyen={akademisyen} />;
             case "yayinlar": return (
                 <YayinlarPanel
                     name={akademisyen?.name}
@@ -1167,8 +1064,7 @@ export default function ProfileShell({ akademisyen, stats, openAlexWorks, author
                 />
             );
             case "projeler": return <ProjelerPanel />;
-            case "faaliyetler": return <FaaliyetlerPanel />;
-            case "basarilar": return <BaskilarPanel stats={stats} />;
+            case "basarilar": return <BaskilarPanel stats={stats} akademisyen={akademisyen} chartData={chartData} />;
             case "duyurular": return <PlaceholderPanel title="Duyurular & Dokümanlar" icon={Bell} />;
             case "iletisim": return <IletisimPanel akademisyen={akademisyen} />;
             default: return <AnaSayfaPanel akademisyen={akademisyen} stats={stats} />;
@@ -1193,7 +1089,9 @@ export default function ProfileShell({ akademisyen, stats, openAlexWorks, author
                         <TTOLogo size="w-5 h-5" fontSize="text-[5px]" />
                         <h1 className="text-[10px] font-black tracking-widest text-slate-500 uppercase leading-none mt-0.5">Bibliyografya</h1>
                     </div>
-                    <span className="text-[11px] font-bold truncate w-full text-center px-2">{akademisyen?.name}</span>
+                    <span className="text-[11px] font-bold truncate w-full text-center px-2">
+                        {akademisyen?.unvan ? `${akademisyen.unvan} ` : ""}{akademisyen?.name}
+                    </span>
                 </div>
 
                 <div className="flex justify-end pr-2">
@@ -1221,22 +1119,56 @@ export default function ProfileShell({ akademisyen, stats, openAlexWorks, author
 
                     {/* Avatar */}
                     <div className="flex flex-col items-center px-5 pb-5 pt-2">
-                        <div className={`w-28 h-28 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center shadow-2xl ring-4 ring-white/10 mb-4`}>
-                            <span className="text-white text-4xl font-black">{initials}</span>
+                        <div className={`w-28 h-28 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center shadow-2xl ring-4 ring-white/10 mb-4 overflow-hidden`}>
+                            {akademisyen?.fotograf_url ? (
+                                <img
+                                    src={akademisyen.fotograf_url}
+                                    alt={akademisyen.name}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <span className="text-white text-4xl font-black">{initials}</span>
+                            )}
                         </div>
-                        <h2 className="text-sm font-black text-white text-center leading-tight">{akademisyen?.name || "Akademisyen"}</h2>
+                        <h2 className="text-sm font-black text-white text-center leading-tight">
+                            {akademisyen?.unvan ? `${akademisyen.unvan} ` : ""}{akademisyen?.name || "Akademisyen"}
+                        </h2>
                         <p className="text-[11px] text-slate-400 font-medium mt-1 text-center">{akademisyen?.role || "Akademisyen"}</p>
                     </div>
 
                     {/* Sosyal medya ikonları */}
                     <div className="px-5 pb-4">
                         <div className="flex flex-wrap justify-center gap-2">
-                            {SOCIAL_ICONS.map(({ label, title, bg, textColor, href }) => (
-                                <a key={title} href={href} title={title}
-                                    className={`w-9 h-9 rounded-full ${bg} ${textColor} flex items-center justify-center text-[10px] font-black hover:scale-110 transition-transform shadow-md`}>
-                                    {label}
+                            {akademisyen?.scholar_id && (
+                                <a href={`https://scholar.google.com/citations?user=${akademisyen.scholar_id}`} target="_blank" rel="noreferrer" title="Google Scholar"
+                                    className="w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] font-black hover:scale-110 transition-transform shadow-md">
+                                    GS
                                 </a>
-                            ))}
+                            )}
+                            {akademisyen?.scopus_id && (
+                                <a href={`https://www.scopus.com/authid/detail.uri?authorId=${akademisyen.scopus_id}`} target="_blank" rel="noreferrer" title="Scopus"
+                                    className="w-9 h-9 rounded-full bg-orange-500 text-white flex items-center justify-center text-[10px] font-black hover:scale-110 transition-transform shadow-md">
+                                    SC
+                                </a>
+                            )}
+                            {akademisyen?.orcid_id && (
+                                <a href={`https://orcid.org/${akademisyen.orcid_id}`} target="_blank" rel="noreferrer" title="ORCID"
+                                    className="w-9 h-9 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] font-black hover:scale-110 transition-transform shadow-md">
+                                    iD
+                                </a>
+                            )}
+                            {akademisyen?.publons_id && (
+                                <a href={`https://publons.com/researcher/${akademisyen.publons_id}`} target="_blank" rel="noreferrer" title="Publons"
+                                    className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black hover:scale-110 transition-transform shadow-md">
+                                    P
+                                </a>
+                            )}
+                            {akademisyen?.researchgate_url && (
+                                <a href={akademisyen.researchgate_url} target="_blank" rel="noreferrer" title="ResearchGate"
+                                    className="w-9 h-9 rounded-full bg-teal-600 text-white flex items-center justify-center text-[10px] font-black hover:scale-110 transition-transform shadow-md">
+                                    RG
+                                </a>
+                            )}
                         </div>
                     </div>
 
@@ -1294,22 +1226,56 @@ export default function ProfileShell({ akademisyen, stats, openAlexWorks, author
                 <div className="flex flex-col items-center px-5 pb-5 pt-2">
 
 
-                    <div className={`w-28 h-28 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center shadow-2xl ring-4 ring-white/10 mb-4`}>
-                        <span className="text-white text-4xl font-black">{initials}</span>
+                    <div className={`w-28 h-28 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center shadow-2xl ring-4 ring-white/10 mb-4 overflow-hidden`}>
+                        {akademisyen?.fotograf_url ? (
+                            <img
+                                src={akademisyen.fotograf_url}
+                                alt={akademisyen.name}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <span className="text-white text-4xl font-black">{initials}</span>
+                        )}
                     </div>
-                    <h2 className="text-sm font-black text-white text-center leading-tight">{akademisyen?.name || "Akademisyen"}</h2>
+                    <h2 className="text-sm font-black text-white text-center leading-tight">
+                        {akademisyen?.unvan ? `${akademisyen.unvan} ` : ""}{akademisyen?.name || "Akademisyen"}
+                    </h2>
                     <p className="text-[11px] text-slate-400 font-medium mt-1 text-center">{akademisyen?.role || "Akademisyen"}</p>
                 </div>
 
                 {/* Sosyal medya ikonları */}
                 <div className="px-5 pb-4">
                     <div className="flex flex-wrap justify-center gap-2">
-                        {SOCIAL_ICONS.map(({ label, title, bg, textColor, href }) => (
-                            <a key={title} href={href} title={title}
-                                className={`w-9 h-9 rounded-full ${bg} ${textColor} flex items-center justify-center text-[10px] font-black hover:scale-110 transition-transform shadow-md`}>
-                                {label}
+                        {akademisyen?.scholar_id && (
+                            <a href={`https://scholar.google.com/citations?user=${akademisyen.scholar_id}`} target="_blank" rel="noreferrer" title="Google Scholar"
+                                className="w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] font-black hover:scale-110 transition-transform shadow-md">
+                                GS
                             </a>
-                        ))}
+                        )}
+                        {akademisyen?.scopus_id && (
+                            <a href={`https://www.scopus.com/authid/detail.uri?authorId=${akademisyen.scopus_id}`} target="_blank" rel="noreferrer" title="Scopus"
+                                className="w-9 h-9 rounded-full bg-orange-500 text-white flex items-center justify-center text-[10px] font-black hover:scale-110 transition-transform shadow-md">
+                                SC
+                            </a>
+                        )}
+                        {akademisyen?.orcid_id && (
+                            <a href={`https://orcid.org/${akademisyen.orcid_id}`} target="_blank" rel="noreferrer" title="ORCID"
+                                className="w-9 h-9 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] font-black hover:scale-110 transition-transform shadow-md">
+                                iD
+                            </a>
+                        )}
+                        {akademisyen?.publons_id && (
+                            <a href={`https://publons.com/researcher/${akademisyen.publons_id}`} target="_blank" rel="noreferrer" title="Publons"
+                                className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black hover:scale-110 transition-transform shadow-md">
+                                P
+                            </a>
+                        )}
+                        {akademisyen?.researchgate_url && (
+                            <a href={akademisyen.researchgate_url} target="_blank" rel="noreferrer" title="ResearchGate"
+                                className="w-9 h-9 rounded-full bg-teal-600 text-white flex items-center justify-center text-[10px] font-black hover:scale-110 transition-transform shadow-md">
+                                RG
+                            </a>
+                        )}
                     </div>
                 </div>
 
@@ -1348,9 +1314,27 @@ export default function ProfileShell({ akademisyen, stats, openAlexWorks, author
             {/* ════════════════════ SAĞ İÇERİK ════════════════════ */}
             <main className="flex-1 h-full overflow-y-auto bg-hmku-bg">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+                    {/* Geliştirme Aşaması Notu */}
+                    <div className="flex justify-start mb-6">
+                        <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-slate-100 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-600 shadow-sm animate-pulse-subtle">
+                            <Sparkles className="w-4 h-4 text-hmku-primary" />
+                            <span>
+                                Geliştirme Aşamasında. Lütfen görüş, öneri ve geribildirimleriniz için{" "}
+                                <a href="mailto:info@qoodly.com" className="font-bold text-hmku-dark underline decoration-hmku-primary/30 hover:decoration-hmku-primary transition-all">
+                                    info@qoodly.com
+                                </a>
+                            </span>
+                        </div>
+                    </div>
+
                     {renderPanel()}
                 </div>
             </main>
+
+            <DevelopmentDialog
+                isOpen={isDevDialogOpen}
+                onClose={() => setIsDevDialogOpen(false)}
+            />
         </div>
 
     );

@@ -97,7 +97,7 @@ export default async function HakkimizdaPage() {
     // Her üyeye initials ve gradient ekle (UI için gerekli)
     const ekipWithVisuals = liste.map((m) => ({
         ...m,
-        name: m.ad_soyad,
+        name: m.unvan ? `${m.unvan} ${m.ad_soyad}` : m.ad_soyad,
         role: m.rol_etiketi || "Akademisyen",
         initials: getInitials(m.ad_soyad),
         gradient: getGradient(m.ad_soyad),
@@ -110,6 +110,7 @@ export default async function HakkimizdaPage() {
             bio: m.biyografi || "",
             featured: false, // Gelecekte eklenebilir
         },
+        unvan: m.unvan,
     }));
 
     return (
@@ -247,7 +248,7 @@ export default async function HakkimizdaPage() {
                             {ekipWithVisuals.map((member) => (
                                 <Link
                                     key={member.id}
-                                    href={`/hakkimizda/${member.id}`}
+                                    href={`/hakkimizda/${member.id}?notice=1`}
                                     className="group flex min-h-[180px] bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
                                 >
                                     {/* Sol taraf — metin içeriği */}

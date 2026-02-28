@@ -9,12 +9,12 @@ export async function generateMetadata({ params }) {
     const supabase = await createClient();
     const { data: akademisyen } = await supabase
         .from("akademisyenler")
-        .select("ad_soyad")
+        .select("ad_soyad, unvan, fotograf_url")
         .eq("id", id)
         .single();
 
     return {
-        title: `${akademisyen?.ad_soyad || "Profil"} | Akademisyen Profili`,
+        title: `${akademisyen?.unvan ? `${akademisyen.unvan} ` : ""}${akademisyen?.ad_soyad || "Profil"} | Akademisyen Profili`,
         description: `Akademisyen profili — yayınlar, projeler ve araştırma alanları.`,
     };
 }
@@ -91,6 +91,34 @@ export default async function AkademisyenProfilPage({ params }) {
         bio: akademisyen.biyografi,
         expertise: akademisyen.uzmanlik_alanlari || [],
         orcid_id: akademisyen.orcid_id,
+        // Yeni Alanlar
+        kurum_bilgisi: akademisyen.kurum_bilgisi,
+        arastirma_alanlari: akademisyen.arastirma_alanlari || [],
+        yayinlardaki_isimler: akademisyen.yayinlardaki_isimler || [],
+        egitim_bilgileri: akademisyen.egitim_bilgileri || [],
+        yapilan_tezler: akademisyen.yapilan_tezler || [],
+        yabanci_diller: akademisyen.yabanci_diller || [],
+        akademik_unvanlar: akademisyen.akademik_unvanlar || [],
+        yonetimsel_gorevler: akademisyen.yonetimsel_gorevler || [],
+        avesis_url: akademisyen.avesis_url,
+        iletisim_email: akademisyen.iletisim_email,
+        scholar_id: akademisyen.scholar_id,
+        scopus_id: akademisyen.scopus_id,
+        publons_id: akademisyen.publons_id,
+        yok_akademik_id: akademisyen.yok_akademik_id,
+        facebook_url: akademisyen.facebook_url,
+        linkedin_url: akademisyen.linkedin_url,
+        researchgate_url: akademisyen.researchgate_url,
+        instagram_url: akademisyen.instagram_url,
+        // Yeni Metrik Kolonları
+        atif_wos: akademisyen.atif_wos,
+        hindeks_wos: akademisyen.hindeks_wos,
+        atif_scopus: akademisyen.atif_scopus,
+        hindeks_scopus: akademisyen.hindeks_scopus,
+        atif_trdizin: akademisyen.atif_trdizin,
+        hindeks_trdizin: akademisyen.hindeks_trdizin,
+        unvan: akademisyen.unvan,
+        fotograf_url: akademisyen.fotograf_url,
     };
 
     // Zenginleştirilmiş yayın listesinden endeks istatistiklerini hesapla
@@ -100,6 +128,9 @@ export default async function AkademisyenProfilPage({ params }) {
     ).length;
     const scopusCount = enrichedResults.filter(w =>
         w.journalIndexes?.includes('SCOPUS')
+    ).length;
+    const trdizinCount = enrichedResults.filter(w =>
+        w.journalIndexes?.includes('TRDIZIN')
     ).length;
     const openAccessCount = enrichedResults.filter(w =>
         w.open_access?.is_oa === true
@@ -114,7 +145,17 @@ export default async function AkademisyenProfilPage({ params }) {
         projects: akademisyen.proje_sayisi || 0,
         wosCount,
         scopusCount,
+        trdizinCount,
     };
+
+    // Grafikler için yıllık veri transformasyonu
+    const chartData = authorStats?.counts_by_year
+        ?.sort((a, b) => a.year - b.year)
+        .map(d => ({
+            year: String(d.year),
+            publications: d.works_count,
+            citations: d.cited_by_count,
+        })) ?? [];
 
     return (
         <ProfileShell
@@ -122,6 +163,7 @@ export default async function AkademisyenProfilPage({ params }) {
             stats={stats}
             openAlexWorks={openAlexWorks}
             authorTopics={authorStats?.topics ?? []}
+            chartData={chartData}
         />
     );
 }
