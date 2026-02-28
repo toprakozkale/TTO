@@ -51,8 +51,6 @@ const NAV_ITEMS = [
     { id: "yayinlar", label: "Yayınlar & Eserler", icon: BookOpen },
     { id: "projeler", label: "Proje & Patent & Tasarım", icon: FileText },
     { id: "faaliyetler", label: "Bilimsel & Mesleki Faaliyetler", icon: TrendingUp },
-    { id: "basarilar", label: "Başarılar & Tanınırlık", icon: Award },
-    { id: "duyurular", label: "Duyurular & Dokümanlar", icon: Bell },
     { id: "iletisim", label: "İletişim", icon: Mail },
 ];
 
@@ -93,6 +91,47 @@ function getInitials(name = "") {
 
 function AnaSayfaPanel({ akademisyen, stats }) {
     const [metriklerOpen, setMetriklerOpen] = useState(true);
+
+    const chartData = [
+        { year: "2016", publications: 5, citations: 20 },
+        { year: "2017", publications: 14, citations: 50 },
+        { year: "2018", publications: 14, citations: 120 },
+        { year: "2019", publications: 7, citations: 180 },
+        { year: "2020", publications: 26, citations: 300 },
+        { year: "2021", publications: 12, citations: 550 },
+        { year: "2022", publications: 21, citations: 1100 },
+        { year: "2023", publications: 58, citations: 2200 },
+        { year: "2024", publications: 69, citations: 3800 },
+        { year: "2025", publications: 37, citations: 4100 },
+        { year: "2026", publications: 4, citations: 0 },
+    ];
+
+    const genelMetrikler = [
+        { label: "Yayın", value: stats?.totalPublications ?? 0, badge: null },
+        { label: "Yayın (WoS)", value: 197, badge: null },
+        { label: "Yayın (Scopus)", value: 201, badge: null },
+        { label: "Atıf (WoS)", value: 11117, badge: null },
+        { label: "H-İndeks (WoS)", value: 56, badge: null },
+        { label: "Atıf (Scopus)", value: 12144, badge: null },
+        { label: "H-İndeks (Scopus)", value: 57, badge: null },
+        { label: "Atıf (Scholar)", value: 15674, badge: null },
+        { label: "H-İndeks (Scholar)", value: 62, badge: null },
+        { label: "Atıf (TrDizin)", value: 10, badge: null },
+        { label: "H-İndeks (TrDizin)", value: 2, badge: null },
+        { label: "Atıf (Sobiad)", value: 594, badge: null },
+        { label: "H-İndeks (Sobiad)", value: 13, badge: null },
+        { label: "Atıf (Diğer Toplam)", value: 21, badge: null },
+        { label: "Proje", value: stats?.projects ?? 2, badge: null },
+        {
+            label: "Açık Erişim",
+            value: stats?.openAccess ?? 9,
+            badge: (
+                <svg viewBox="0 0 24 24" className="w-8 h-8 text-orange-500 flex-shrink-0" fill="currentColor">
+                    <path d="M12 1C8.676 1 6 3.676 6 7v1H4v15h16V8h-2V7c0-3.324-2.676-6-6-6zm0 2c2.276 0 4 1.724 4 4v1H8V7c0-2.276 1.724-4 4-4zm0 9a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" />
+                </svg>
+            ),
+        },
+    ];
 
     const genelBilgiler = [
         {
@@ -167,7 +206,7 @@ function AnaSayfaPanel({ akademisyen, stats }) {
             </div>
 
             {/* ── Metrikler Accordion ── */}
-            <div className="bg-white border border-t-0 border-slate-200 rounded-b-2xl overflow-hidden">
+            <div className="bg-white border border-t-0 border-slate-200 overflow-hidden">
                 {/* Accordion başlık */}
                 <button
                     onClick={() => setMetriklerOpen(!metriklerOpen)}
@@ -180,7 +219,7 @@ function AnaSayfaPanel({ akademisyen, stats }) {
 
                 {metriklerOpen && (
                     <div className="p-5">
-                        {/* "Daha fazla metrik" butonu */}
+                        {/* \"Daha fazla metrik\" butonu */}
                         <div className="flex justify-end mb-4">
                             <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
                                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -190,7 +229,7 @@ function AnaSayfaPanel({ akademisyen, stats }) {
                             </button>
                         </div>
 
-                        {/* Metrik grid — 4 sütun, referanstaki gibi */}
+                        {/* Metrik grid */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden">
                             {metrikler.map(({ label, value, badge }) => (
                                 <div key={label} className="bg-white p-4 flex items-start justify-between gap-2">
@@ -207,9 +246,94 @@ function AnaSayfaPanel({ akademisyen, stats }) {
                     </div>
                 )}
             </div>
+
+            {/* ── Başarılar & Tanınırlık — Grafik ── */}
+            <div className="bg-white border border-t-0 border-slate-200 p-6">
+                <h2 className="text-xl font-bold text-slate-800 mb-1">Başarılar & Tanınırlık</h2>
+                <div className="mt-1.5 w-14 h-1 bg-slate-800 rounded-full mb-6" />
+
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm mb-4">
+                    <h3 className="text-sm font-semibold text-center text-slate-600 mb-6">Yıllara Göre Yayın ve Atıf Sayıları</h3>
+                    <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis
+                                    dataKey="year"
+                                    tick={{ fontSize: 10, fill: "#64748b" }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    angle={-45}
+                                    textAnchor="end"
+                                />
+                                <YAxis
+                                    yAxisId="left"
+                                    orientation="left"
+                                    tick={{ fontSize: 10, fill: "#64748b" }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    label={{ value: 'Yayın', angle: -90, position: 'insideLeft', fontSize: 11, fill: '#64748b' }}
+                                />
+                                <YAxis
+                                    yAxisId="right"
+                                    orientation="right"
+                                    tick={{ fontSize: 10, fill: "#64748b" }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    label={{ value: 'Atıf', angle: 90, position: 'insideRight', fontSize: 11, fill: '#64748b' }}
+                                />
+                                <Tooltip
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                    cursor={{ fill: '#f8fafc' }}
+                                />
+                                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: 10, paddingTop: 10 }} />
+                                <Bar
+                                    yAxisId="left"
+                                    dataKey="publications"
+                                    name="Yayın Sayısı"
+                                    fill="#38bdf8"
+                                    radius={[4, 4, 0, 0]}
+                                    barSize={24}
+                                />
+                                <Line
+                                    yAxisId="right"
+                                    type="monotone"
+                                    dataKey="citations"
+                                    name="Atıf Sayısı (SCOPUS)"
+                                    stroke="#1e293b"
+                                    strokeWidth={3}
+                                    dot={{ fill: '#1e293b', r: 4 }}
+                                    activeDot={{ r: 6 }}
+                                />
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Detaylı metrik tablosu */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden">
+                        {genelMetrikler.map(({ label, value, badge }) => (
+                            <div key={label} className="bg-white p-4 flex items-start justify-between gap-2">
+                                <div>
+                                    <p className="text-[11px] text-slate-500 leading-tight mb-1">{label}</p>
+                                    <p className="text-2xl font-bold text-slate-800 leading-none">{value}</p>
+                                </div>
+                                {badge && (
+                                    <div className="flex-shrink-0 mt-0.5">{badge}</div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Alt yuvarlak köşe */}
+            <div className="bg-white border border-t-0 border-slate-200 rounded-b-2xl h-4" />
         </div>
     );
 }
+
 
 
 function AccordionSection({ title, count, children, defaultOpen = true }) {
