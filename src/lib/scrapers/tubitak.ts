@@ -2,7 +2,10 @@ import * as cheerio from 'cheerio'
 import { BASE_HEADERS } from './utils'
 
 export async function scrapeTubitak() {
-    const res = await fetch('https://tubitak.gov.tr/tr/duyuru', { headers: BASE_HEADERS })
+    const res = await fetch('https://tubitak.gov.tr/tr/duyuru', {
+        headers: BASE_HEADERS,
+        cache: 'no-store'
+    })
     if (!res.ok) throw new Error(`TÜBİTAK fetch failed: ${res.status}`)
     const $ = cheerio.load(await res.text())
     const items: any[] = []
@@ -34,8 +37,8 @@ export async function scrapeTubitak() {
             description: null,
             url,
             image_url: null,
-            date: null,
-            badge: null,
+            date: new Date().toISOString().split('T')[0],
+            badge: 'TÜBİTAK',
         })
     })
 

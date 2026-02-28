@@ -2,7 +2,10 @@ import * as cheerio from 'cheerio'
 import { parseTurkishDate, parseDotDate, BASE_HEADERS } from './utils'
 
 export async function scrapeTicaret() {
-    const res = await fetch('https://ticaret.gov.tr/duyurular', { headers: BASE_HEADERS })
+    const res = await fetch('https://ticaret.gov.tr/duyurular', {
+        headers: BASE_HEADERS,
+        cache: 'no-store'
+    })
     if (!res.ok) throw new Error(`Ticaret fetch failed: ${res.status}`)
     const $ = cheerio.load(await res.text())
     const items: any[] = []

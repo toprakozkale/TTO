@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { runScrapers } from "@/lib/actions/scraper";
+import { useRouter } from "next/navigation";
 
 export default function ScrapeButton() {
+    const router = useRouter();
     const [status, setStatus] = useState("idle"); // idle | loading | success | error
     const [result, setResult] = useState(null);
 
@@ -19,6 +21,7 @@ export default function ScrapeButton() {
             } else {
                 setStatus("success");
                 setResult(data);
+                router.refresh(); // Sayfadaki Server Component verilerini tazele
             }
         } catch (err) {
             setStatus("error");
@@ -33,10 +36,10 @@ export default function ScrapeButton() {
                 onClick={handleScrape}
                 disabled={status === "loading"}
                 className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all shadow-sm active:scale-95 ${status === "success"
-                        ? "bg-emerald-500 text-white"
-                        : status === "error"
-                            ? "bg-red-500 text-white"
-                            : "bg-white border border-slate-200 text-hmku-dark hover:bg-slate-50"
+                    ? "bg-emerald-500 text-white"
+                    : status === "error"
+                        ? "bg-red-500 text-white"
+                        : "bg-white border border-slate-200 text-hmku-dark hover:bg-slate-50"
                     }`}
             >
                 <RefreshCw
@@ -53,19 +56,21 @@ export default function ScrapeButton() {
             </button>
             {status === "success" && result?.summary && (
                 <div className="flex gap-2">
-                    {result.summary.map((s) => (
-                        <span
-                            key={s.source}
-                            className={`px-2 py-0.5 text-[10px] font-bold rounded ${s.status === "fulfilled"
+                    {result.summary
+                        .filter((s) => s.count > 0 || s.status === "rejected")
+                        .map((s) => (
+                            <span
+                                key={s.source}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded ${s.status === "fulfilled"
                                     ? "bg-emerald-50 text-emerald-600"
                                     : "bg-red-50 text-red-600"
-                                }`}
-                        >
-                            {s.source}: {s.count}
-                        </span>
-                    ))}
+                                    }`}
+                            >
+                                {s.source}: {s.count}
+                            </span>
+                        ))}
                 </div>
             )}
-        </div>
+        </div >
     );
 }

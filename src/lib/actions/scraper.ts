@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { scrapeTubitak } from '@/lib/scrapers/tubitak'
 import { scrapeErasmus } from '@/lib/scrapers/erasmus'
 import { scrapeKosgeb } from '@/lib/scrapers/kosgeb'
-import { scrapeTicaret } from '@/lib/scrapers/ticaret'
+import { scrapeYok } from '@/lib/scrapers/yok'
 import { revalidatePath } from 'next/cache'
 
 const supabaseAdmin = createClient(
@@ -17,10 +17,10 @@ export async function runScrapers() {
         scrapeTubitak(),
         scrapeErasmus(),
         scrapeKosgeb(),
-        scrapeTicaret(),
+        scrapeYok(),
     ])
 
-    const scraperNames = ['tubitak', 'erasmus', 'kosgeb', 'ticaret']
+    const scraperNames = ['tubitak', 'erasmus', 'kosgeb', 'yok']
     const allItems = results.flatMap((r, i) => {
         if (r.status === 'fulfilled') return r.value
         console.error(`[scraper:${scraperNames[i]}] failed:`, r.reason?.message)
@@ -30,7 +30,7 @@ export async function runScrapers() {
     if (allItems.length > 0) {
         const { error } = await supabaseAdmin
             .from('external_bulletins')
-            .upsert(allItems, { onConflict: 'url', ignoreDuplicates: true })
+            .upsert(allItems, { onConflict: 'url', ignoreDuplicates: false })
         if (error) {
             console.error('DB upsert error:', error)
             return { error: error.message }

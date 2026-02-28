@@ -9,6 +9,7 @@ import {
     AlertTriangle,
     Info,
     ExternalLink,
+    GraduationCap,
 } from "lucide-react";
 import { getExternalBulletins } from "@/lib/getExternalBulletins";
 import ScrapeButton from "@/components/admin/ScrapeButton";
@@ -28,8 +29,9 @@ const bulletinConfig = {
         badgeClass: "bg-blue-50 text-blue-600",
         hoverText: "group-hover:text-blue-600",
         badgeTextClass: "text-blue-500",
-        footerBtn: "text-blue-700 hover:bg-blue-600",
-        footerLabel: "Tüm Listeyi Gör",
+        footerBtn: "text-blue-700 hover:bg-blue-600/10",
+        footerLabel: "RESMİ SİTEYİ ZİYARET ET",
+        url: "https://tubitak.gov.tr/tr",
     },
     erasmus: {
         title: "ERASMUS+ BÜLTENİ",
@@ -39,19 +41,33 @@ const bulletinConfig = {
         badgeClass: "bg-emerald-50 text-emerald-600",
         hoverText: "group-hover:text-emerald-600",
         badgeTextClass: "text-emerald-500",
-        footerBtn: "text-emerald-700 hover:bg-emerald-600",
-        footerLabel: "Partner Ağına Katıl",
+        footerBtn: "text-emerald-700 hover:bg-emerald-600/10",
+        footerLabel: "RESMİ SİTEYİ ZİYARET ET",
+        url: "https://erasmus-plus.ec.europa.eu",
     },
     bakanlik: {
-        title: "BAKANLIK BÜLTENİ",
+        title: "KOSGEB BÜLTENİ",
         icon: Bell,
         bg: "bg-hmku-primary",
         shadow: "shadow-hmku-primary/20",
         badgeClass: "bg-rose-50 text-hmku-primary",
         hoverText: "group-hover:text-hmku-primary",
         badgeTextClass: "text-hmku-primary",
-        footerBtn: "text-hmku-primary hover:bg-hmku-primary",
-        footerLabel: "Teşvikleri İncele",
+        footerBtn: "text-hmku-primary hover:bg-hmku-primary/10",
+        footerLabel: "RESMİ SİTEYİ ZİYARET ET",
+        url: "https://www.kosgeb.gov.tr",
+    },
+    yok: {
+        title: "YÖK BÜLTEN",
+        icon: GraduationCap,
+        bg: "bg-indigo-600",
+        shadow: "shadow-indigo-500/20",
+        badgeClass: "bg-indigo-50 text-indigo-600",
+        hoverText: "group-hover:text-indigo-600",
+        badgeTextClass: "text-indigo-500",
+        footerBtn: "text-indigo-700 hover:bg-indigo-600/10",
+        footerLabel: "RESMİ SİTEYİ ZİYARET ET",
+        url: "https://www.yok.gov.tr/tr",
     },
 };
 
@@ -116,9 +132,14 @@ function BulletinCard({ items, config }) {
                 )}
             </div>
             <div className="p-4 bg-slate-50 border-t border-slate-100 shrink-0">
-                <button className={`w-full py-2.5 bg-white border border-slate-200 ${config.footerBtn} text-xs font-black rounded-xl hover:text-white transition-all shadow-sm flex items-center justify-center gap-2`}>
+                <a
+                    href={config.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`w-full py-2.5 bg-white border border-slate-200 ${config.footerBtn} text-[10px] font-black rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 uppercase tracking-wider`}
+                >
                     {config.footerLabel} <ArrowRight size={14} />
-                </button>
+                </a>
             </div>
         </div>
     );
@@ -213,6 +234,7 @@ export default async function AdminPage() {
                 <BulletinCard items={externalData.tubitak} config={bulletinConfig.tubitak} />
                 <BulletinCard items={externalData.erasmus} config={bulletinConfig.erasmus} />
                 <BulletinCard items={externalData.bakanlik} config={bulletinConfig.bakanlik} />
+                <BulletinCard items={externalData.yok} config={bulletinConfig.yok} />
             </div>
         </div>
     );
