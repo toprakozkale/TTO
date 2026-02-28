@@ -1208,54 +1208,74 @@ export default function ProfileShell({ akademisyen, stats, openAlexWorks, author
                 {/* Backdrop Overlay */}
                 <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
 
-                {/* Sidebar Panel */}
-                <div className={`absolute inset-y-0 left-0 w-72 h-full bg-hmku-dark shadow-2xl transition-transform duration-300 ease-out border-r border-white/10 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
-                    <div className="flex flex-col h-full">
-                        {/* Header */}
-                        <div className="flex items-center justify-between px-6 h-16 border-b border-white/5">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Akademik Profil</span>
-                                <span className="text-sm font-bold text-white mt-0.5 truncate max-w-[180px]">{akademisyen?.name}</span>
-                            </div>
-                            <button onClick={() => setIsMobileMenuOpen(false)} className="p-2.5 rounded-xl bg-white/5 text-slate-400 hover:text-white transition-colors">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
+                {/* Sidebar Panel — masaüstü ile aynı yapı */}
+                <div className={`absolute inset-y-0 left-0 w-72 h-full bg-hmku-dark shadow-2xl transition-transform duration-300 ease-out border-r border-white/10 flex flex-col ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
 
-                        {/* Navigation */}
-                        <div className="flex-1 overflow-y-auto px-3 py-6 space-y-1">
-                            <p className="px-3 mb-3 text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">Navigasyon</p>
-                            {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
-                                const active = activeTab === id;
-                                return (
-                                    <button
-                                        key={id}
-                                        onClick={() => {
-                                            setActiveTab(id);
-                                            setIsMobileMenuOpen(false);
-                                        }}
-                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] transition-all duration-200 ${active
-                                            ? "bg-blue-600 text-white font-bold shadow-lg shadow-blue-500/20"
-                                            : "text-slate-400 hover:text-white hover:bg-white/5"
-                                            }`}
-                                    >
-                                        <Icon className={`w-4.5 h-4.5 ${active ? "text-white" : "text-slate-500"}`} />
-                                        {label}
-                                    </button>
-                                );
-                            })}
+                    {/* Branding row */}
+                    <div className="flex flex-col items-center justify-center pt-8 pb-4">
+                        <div className="flex items-center gap-2.5 mb-2 opacity-80">
+                            <TTOLogo size="w-8 h-8" fontSize="text-[7px]" />
+                            <span className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] mt-0.5">Bibliyografya</span>
                         </div>
+                    </div>
 
-                        {/* Footer / User Area */}
-                        <div className="p-4 border-t border-white/10">
-                            <button className="w-full flex items-center justify-center gap-2 px-4 py-3 text-xs font-bold text-slate-300 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors">
-                                <Download className="w-4 h-4" />
-                                CV Dosyası İndir
-                            </button>
+                    {/* Avatar */}
+                    <div className="flex flex-col items-center px-5 pb-5 pt-2">
+                        <div className={`w-28 h-28 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center shadow-2xl ring-4 ring-white/10 mb-4`}>
+                            <span className="text-white text-4xl font-black">{initials}</span>
                         </div>
+                        <h2 className="text-sm font-black text-white text-center leading-tight">{akademisyen?.name || "Akademisyen"}</h2>
+                        <p className="text-[11px] text-slate-400 font-medium mt-1 text-center">{akademisyen?.role || "Akademisyen"}</p>
+                    </div>
+
+                    {/* Sosyal medya ikonları */}
+                    <div className="px-5 pb-4">
+                        <div className="flex flex-wrap justify-center gap-2">
+                            {SOCIAL_ICONS.map(({ label, title, bg, textColor, href }) => (
+                                <a key={title} href={href} title={title}
+                                    className={`w-9 h-9 rounded-full ${bg} ${textColor} flex items-center justify-center text-[10px] font-black hover:scale-110 transition-transform shadow-md`}>
+                                    {label}
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Ayırıcı */}
+                    <div className="mx-5 border-t border-white/10 mb-2" />
+
+                    {/* Navigasyon linkleri */}
+                    <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
+                        {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
+                            const active = activeTab === id;
+                            return (
+                                <button
+                                    key={id}
+                                    onClick={() => {
+                                        setActiveTab(id);
+                                        setIsMobileMenuOpen(false);
+                                    }}
+                                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all duration-150 rounded-lg ${active
+                                        ? "text-white font-black bg-white/10 shadow-sm"
+                                        : "text-slate-400 font-normal hover:text-white hover:bg-white/5"
+                                        }`}
+                                >
+                                    <Icon className={`w-4 h-4 ${active ? "text-white" : "text-slate-500"}`} />
+                                    {label}
+                                </button>
+                            );
+                        })}
+                    </nav>
+
+                    {/* CV İndir */}
+                    <div className="px-5 py-4 border-t border-white/10">
+                        <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-300 bg-white/8 border border-white/15 rounded-xl hover:bg-white/15 hover:text-white transition-all duration-200">
+                            <Download className="w-3.5 h-3.5" />
+                            Özgeçmiş Dosyası İndir
+                        </button>
                     </div>
                 </div>
             </div>
+
 
 
 
