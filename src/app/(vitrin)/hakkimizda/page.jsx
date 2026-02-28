@@ -220,10 +220,6 @@ export default async function HakkimizdaPage() {
                         Uzman Kadromuz
                     </h2>
                     {/* Açıklama — ortalı */}
-                    <p className="mt-4 text-base text-hmku-muted max-w-xl mx-auto text-center">
-                        <strong>Qoodly AI</strong> ile anlık olarak güncellenen bibliyografya verileri ile
-                        multidisipliner ekibimize göz atın.
-                    </p>
                 </div>
 
                 {/* AI Breathing Frame */}
@@ -254,6 +250,14 @@ export default async function HakkimizdaPage() {
                                     {/* Sol taraf — metin içeriği */}
                                     <div className="flex-1 p-5 flex flex-col justify-between min-w-0">
                                         <div>
+                                            {/* Örnek Profil Rozeti */}
+                                            {member.meta.bio?.includes("313131") && (
+                                                <div className="mb-3 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg inline-block">
+                                                    <p className="text-[10px] font-black text-amber-700 uppercase tracking-tight">
+                                                        ÖRNEK PROFİL <span className="font-bold opacity-70 ml-1">(OKULUMUZ ÖĞRETİM ÜYESİ DEĞİLDİR)</span>
+                                                    </p>
+                                                </div>
+                                            )}
                                             {/* Role etiketi */}
                                             <p className="text-[10px] font-black text-hmku-muted uppercase tracking-widest mb-1">
                                                 {member.role}
